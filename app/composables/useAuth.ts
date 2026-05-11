@@ -14,38 +14,42 @@ export const useAuth = () => {
   const isAdmin = computed(() => user.value?.role === 'Admin')
 
   const initAuth = async () => {
-    // Only fetch profile if we have a token but no user state
-    if (token.value && !user.value) {
-      try {
-        const response = await $fetch<any>(`${apiUrl}/profile`, {
-          headers: {
-            Authorization: `Bearer ${token.value}`
-          }
-        })
-        // Handle potential data wrapping
-        user.value = response.user || response.data || response
-      } catch (error) {
-        console.error('Failed to initialize auth:', error)
-        // Only clear if it's a 401 Unauthorized
-        // @ts-ignore
-        if (error.status === 401) {
-          token.value = null
-          user.value = null
+    // 1. Try to restore user from localStorage if we have a token
+    if (token.value && !user.value && process.client) {
+      const savedUser = localStorage.getItem('user_profile')
+      if (savedUser) {
+        try {
+          user.value = JSON.parse(savedUser)
+        } catch (e) {
+          console.error('Failed to parse saved user:', e)
         }
       }
     }
+
+    // 2. Note: Profile API is currently unavailable (404), 
+    // so we rely on localStorage for state persistence across refreshes.
+    return user.value
   }
 
   const login = async (credentials: any) => {
     try {
       const response = await $fetch<any>(`${apiUrl}/login`, {
         method: 'POST',
-        body: credentials // Expects { username, password }
+        body: credentials
       })
       
-      if (response.token || response.user) {
-        token.value = response.token || 'mock-token'
-        user.value = response.user
+      const userData = response.user
+      const authToken = response.token
+      
+      if (authToken) {
+        token.value = authToken
+        user.value = userData
+        
+        // Persist user profile to localStorage
+        if (process.client) {
+          localStorage.setItem('user_profile', JSON.stringify(userData))
+        }
+        
         return { success: true }
       }
       return { success: false, error: response.message || 'ข้อมูลไม่ถูกต้อง' }
@@ -62,12 +66,19 @@ export const useAuth = () => {
     try {
       const response = await $fetch<any>(`${apiUrl}/register`, {
         method: 'POST',
-        body: userData // Expects { username, password, name, ... }
+        body: userData
       })
       
-      if (response.token || response.user) {
-        token.value = response.token || 'mock-token'
-        user.value = response.user
+      const userResult = response.user
+      const authToken = response.token
+      
+      if (authToken || userResult) {
+        if (authToken) token.value = authToken
+        user.value = userResult
+        
+        if (process.client && userResult) {
+          localStorage.setItem('user_profile', JSON.stringify(userResult))
+        }
       }
       return { success: true }
     } catch (err: any) {
@@ -82,6 +93,9 @@ export const useAuth = () => {
   const logout = () => {
     token.value = null
     user.value = null
+    if (process.client) {
+      localStorage.removeItem('user_profile')
+    }
     navigateTo('/login')
   }
 

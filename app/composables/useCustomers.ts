@@ -1,35 +1,103 @@
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 
 export const useCustomers = () => {
-  const customers = ref([
-    { id: 1, name: 'สมชาย รักดี', phone: '0812345678', points: 15 },
-    { id: 2, name: 'สมหญิง จริงใจ', phone: '0898765432', points: 5 }
-  ])
+  const config = useRuntimeConfig()
+  const apiUrl = config.public.vendoraUrlApi
+  const token = useCookie('auth_token')
 
-  const addCustomer = (customer: any) => {
-    customers.value.push({ ...customer, id: customers.value.length + 1, points: 0 })
-  }
+  const customers = ref<any[]>([])
+  const isLoading = ref(false)
 
-  const updateCustomer = (id: number, updatedCustomer: any) => {
-    const index = customers.value.findIndex(c => c.id === id)
-    if (index !== -1) {
-      customers.value[index] = { ...customers.value[index], ...updatedCustomer }
+  const fetchCustomers = async () => {
+    if (!token.value) return
+    isLoading.value = true
+    try {
+      const response = await $fetch<any>(`${apiUrl}/customers`, {
+        headers: {
+          Authorization: `Bearer ${token.value}`
+        }
+      })
+      customers.value = response.data || response
+    } catch (error) {
+      console.error('Error fetching customers:', error)
+    } finally {
+      isLoading.value = false
     }
   }
 
-  const deleteCustomer = (id: number) => {
-    customers.value = customers.value.filter(c => c.id !== id)
-  }
-
-  const redeemReward = (id: number, points: number) => {
-    const customer = customers.value.find(c => c.id === id)
-    if (customer) {
-      customer.points -= points
+  const addCustomer = async (customer: any) => {
+    try {
+      await $fetch(`${apiUrl}/customer`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token.value}`
+        },
+        body: customer
+      })
+      await fetchCustomers()
+      return { success: true }
+    } catch (error: any) {
+      console.error('Error adding customer:', error)
+      return { success: false, error: error.data?.message || 'ไม่สามารถเพิ่มข้อมูลลูกค้าได้' }
     }
   }
+
+  const updateCustomer = async (id: number, updatedCustomer: any) => {
+    try {
+      await $fetch(`${apiUrl}/customer/${id}`, {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${token.value}`
+        },
+        body: updatedCustomer
+      })
+      await fetchCustomers()
+      return { success: true }
+    } catch (error: any) {
+      console.error('Error updating customer:', error)
+      return { success: false, error: error.data?.message || 'ไม่สามารถแก้ไขข้อมูลลูกค้าได้' }
+    }
+  }
+
+  const deleteCustomer = async (id: number) => {
+    try {
+      await $fetch(`${apiUrl}/customer/${id}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token.value}`
+        }
+      })
+      await fetchCustomers()
+      return { success: true }
+    } catch (error: any) {
+      console.error('Error deleting customer:', error)
+      return { success: false, error: error.data?.message || 'ไม่สามารถลบข้อมูลลูกค้าได้' }
+    }
+  }
+
+  const redeemReward = async (id: number, points: number) => {
+    try {
+      await $fetch(`${apiUrl}/customer/${id}/redeem`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token.value}`
+        },
+        body: { points }
+      })
+      await fetchCustomers()
+    } catch (error) {
+      console.error('Error redeeming reward:', error)
+    }
+  }
+
+  onMounted(() => {
+    fetchCustomers()
+  })
 
   return {
     customers,
+    isLoading,
+    fetchCustomers,
     addCustomer,
     updateCustomer,
     deleteCustomer,
