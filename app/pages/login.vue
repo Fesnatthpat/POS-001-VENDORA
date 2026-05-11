@@ -1,13 +1,31 @@
 <script setup lang="ts">
+const { login } = useAuth()
 const username = ref('')
 const password = ref('')
 const loading = ref(false)
+const error = ref('')
 
 const handleLogin = async () => {
+  if (!username.value || !password.value) {
+    error.value = 'กรุณากรอกชื่อผู้ใช้งานหรืออีเมลและรหัสผ่าน'
+    return
+  }
+
   loading.value = true
-  // Mock delay
-  await new Promise(resolve => setTimeout(resolve, 800))
-  navigateTo('/dashboard')
+  error.value = ''
+  
+  const result = await login({
+    username: username.value,
+    password: password.value
+  })
+
+  if (result.success) {
+    navigateTo('/dashboard')
+  } else {
+    error.value = result.error || 'การเข้าสู่ระบบล้มเหลว'
+  }
+  
+  loading.value = false
 }
 </script>
 
@@ -27,15 +45,19 @@ const handleLogin = async () => {
             <span class="text-2xl font-extrabold tracking-tight text-slate-900 group-hover:text-indigo-600 transition-colors">Vendora.</span>
           </NuxtLink>
           <h2 class="text-3xl font-black text-slate-900 tracking-tight">ยินดีต้อนรับกลับมา</h2>
-          <p class="mt-3 text-slate-500 font-medium">กรุณากรอกข้อมูลของคุณเพื่อเข้าสู่ระบบ (จำลอง)</p>
+          <p class="mt-3 text-slate-500 font-medium">กรุณากรอกข้อมูลของคุณเพื่อเข้าสู่ระบบ</p>
         </div>
 
         <form class="space-y-6" @submit.prevent="handleLogin">
+          <div v-if="error" class="p-4 bg-rose-50 border border-rose-100 rounded-xl text-rose-600 text-sm font-bold">
+            {{ error }}
+          </div>
+
           <div>
-            <label for="username" class="block text-sm font-bold text-slate-700 mb-2">ชื่อผู้ใช้งาน</label>
+            <label for="username" class="block text-sm font-bold text-slate-700 mb-2">ชื่อผู้ใช้งาน หรือ อีเมล</label>
             <input id="username" type="text" required
               class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all placeholder:text-slate-400"
-              placeholder="admin" v-model="username" />
+              placeholder="admin@example.com" v-model="username" />
           </div>
 
           <div>

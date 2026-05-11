@@ -1,15 +1,33 @@
 <script setup lang="ts">
+const { register } = useAuth()
 const name = ref('')
-const email = ref('')
+const username = ref('')
 const password = ref('')
 const loading = ref(false)
 const error = ref('')
 
 const handleRegister = async () => {
+  if (!name.value || !username.value || !password.value) {
+    error.value = 'กรุณากรอกข้อมูลให้ครบทุกช่อง'
+    return
+  }
+
   loading.value = true
-  // Mock delay
-  await new Promise(resolve => setTimeout(resolve, 800))
-  navigateTo('/dashboard')
+  error.value = ''
+
+  const result = await register({
+    name: name.value,
+    username: username.value,
+    password: password.value
+  })
+
+  if (result.success) {
+    navigateTo('/dashboard')
+  } else {
+    error.value = result.error || 'การสมัครสมาชิกล้มเหลว'
+  }
+  
+  loading.value = false
 }
 </script>
 
@@ -29,7 +47,7 @@ const handleRegister = async () => {
             <span class="text-2xl font-extrabold tracking-tight text-slate-900 group-hover:text-indigo-600 transition-colors">Vendora.</span>
           </NuxtLink>
           <h2 class="text-3xl font-black text-slate-900 tracking-tight">สร้างบัญชี</h2>
-          <p class="mt-3 text-slate-500 font-medium">เข้าร่วมกับเราเพื่อเริ่มจัดการธุรกิจของคุณ (จำลอง)</p>
+          <p class="mt-3 text-slate-500 font-medium">เข้าร่วมกับเราเพื่อเริ่มจัดการธุรกิจของคุณ</p>
         </div>
 
         <form class="space-y-5" @submit.prevent="handleRegister">
@@ -45,10 +63,10 @@ const handleRegister = async () => {
           </div>
 
           <div>
-            <label for="email" class="block text-sm font-bold text-slate-700 mb-2">ที่อยู่อีเมล</label>
-            <input id="email" type="email" required
+            <label for="username" class="block text-sm font-bold text-slate-700 mb-2">ชื่อผู้ใช้งาน หรือ อีเมล</label>
+            <input id="username" type="text" required
               class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all placeholder:text-slate-400"
-              placeholder="name@company.com" v-model="email" />
+              placeholder="admin@example.com" v-model="username" />
           </div>
 
           <div>

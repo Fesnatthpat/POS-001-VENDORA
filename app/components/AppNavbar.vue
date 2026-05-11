@@ -21,16 +21,25 @@
             </div>
 
             <div class="flex items-center space-x-4">
-                <NuxtLink to="/login"
-                    class="text-sm font-semibold text-slate-700 hover:text-indigo-600 px-4 py-2 transition-colors">เข้าสู่ระบบ</NuxtLink>
-                <NuxtLink to="/register"
-                    class="bg-indigo-600 text-white px-5 py-2.5 rounded-full text-sm font-semibold shadow-md shadow-indigo-100 hover:bg-indigo-700 hover:-translate-y-0.5 transition-all">
-                    เริ่มใช้งานฟรี
-                </NuxtLink>
+                <template v-if="isAuthenticated">
+                    <NuxtLink to="/dashboard"
+                        class="bg-indigo-600 text-white px-5 py-2.5 rounded-full text-sm font-semibold shadow-md shadow-indigo-100 hover:bg-indigo-700 hover:-translate-y-0.5 transition-all">
+                        ไปยังแดชบอร์ด
+                    </NuxtLink>
+                </template>
+                <template v-else>
+                    <NuxtLink to="/login"
+                        class="text-sm font-semibold text-slate-700 hover:text-indigo-600 px-4 py-2 transition-colors">เข้าสู่ระบบ</NuxtLink>
+                    <NuxtLink to="/register"
+                        class="bg-indigo-600 text-white px-5 py-2.5 rounded-full text-sm font-semibold shadow-md shadow-indigo-100 hover:bg-indigo-700 hover:-translate-y-0.5 transition-all">
+                        เริ่มใช้งานฟรี
+                    </NuxtLink>
+                </template>
             </div>
         </div>
     </nav>
 </template>
 
 <script setup lang="ts">
+const { isAuthenticated } = useAuth()
 </script>

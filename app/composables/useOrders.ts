@@ -1,52 +1,96 @@
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 
 export const useOrders = () => {
-  const orders = ref([
-    {
-      id: 'ORD-001',
-      timestamp: new Date().toISOString(),
-      items: [{ id: 1, name: 'กาแฟเย็น', price: 45, quantity: 2 }],
-      total: 90,
-      profit: 30,
-      paymentMethod: 'cash',
-      customerId: null
-    },
-    {
-      id: 'ORD-002',
-      timestamp: new Date().toISOString(),
-      items: [{ id: 2, name: 'ชาไทย', price: 40, quantity: 1 }],
-      total: 40,
-      profit: 12,
-      paymentMethod: 'qr',
-      customerId: 1
-    }
-  ])
+  const config = useRuntimeConfig()
+  const apiUrl = config.public.vendoraUrlApi
+  const token = useCookie('auth_token')
+  
+  const orders = ref<any[]>([])
+  const isLoading = ref(false)
 
-  const addOrder = (order: any) => {
-    orders.value.push({
-      ...order,
-      id: `ORD-00${orders.value.length + 1}`,
-      timestamp: new Date().toISOString()
+  const fetchOrders = async () => {
+    if (!token.value) return
+    isLoading.value = true
+    try {
+      const response = await $fetch<any>(`${apiUrl}/orders`, {
+        headers: {
+          Authorization: `Bearer ${token.value}`
+        }
+      })
+      orders.value = response.data || response
+    } catch (error) {
+      console.error('Error fetching orders:', error)
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  const addOrder = async (orderData: any) => {
+    try {
+      const response = await $fetch<any>(`${apiUrl}/order`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token.value}`
+        },
+        body: orderData
+      })
+      
+      // Refresh local orders list
+      await fetchOrders()
+      return response.data || response
+    } catch (error: any) {
+      console.error('Error adding order:', error)
+      throw new Error(error.data?.message || 'ไม่สามารถบันทึกรายการสั่งซื้อได้')
+    }
+  }
+
+  const voidOrder = async (id: string) => {
+    try {
+      await $fetch(`${apiUrl}/order/${id}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token.value}`
+        }
+      })
+      await fetchOrders()
+    } catch (error) {
+      console.error('Error voiding order:', error)
+    }
+  }
+
+  // Held bills stay local as they are temporary
+  const heldBills = useState<any[]>('held_bills', () => [])
+  
+  const holdBill = (items: any[], note: string = '') => {
+    const id = Date.now()
+    heldBills.value.push({
+      id,
+      timestamp: new Date().toISOString(),
+      items,
+      note
     })
   }
-
-  const voidOrder = (id: string) => {
-    orders.value = orders.value.filter(o => o.id !== id)
+  
+  const resumeBill = (id: number) => {
+    const index = heldBills.value.findIndex(b => b.id === id)
+    if (index !== -1) {
+      return heldBills.value.splice(index, 1)[0]
+    }
+    return null
+  }
+  
+  const deleteHeldBill = (id: number) => {
+    heldBills.value = heldBills.value.filter(b => b.id !== id)
   }
 
-  const heldBills = ref([])
-  const holdBill = (bill: any) => {
-    heldBills.value.push(bill)
-  }
-  const resumeBill = (index: number) => {
-    return heldBills.value.splice(index, 1)[0]
-  }
-  const deleteHeldBill = (index: number) => {
-    heldBills.value.splice(index, 1)
-  }
+  onMounted(() => {
+    fetchOrders()
+  })
 
   return {
     orders,
+    isLoading,
+    fetchOrders,
     addOrder,
     voidOrder,
     heldBills,

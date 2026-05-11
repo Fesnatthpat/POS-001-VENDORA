@@ -98,25 +98,13 @@ const getStockStatus = (product: Product) => {
 const handleImageUpload = async (event: any) => {
   const file = event.target.files[0]
   if (file) {
-    isUploadingImage.value = true
-    try {
-      // 1. ให้รูปแสดงบนหน้าจอทันทีผ่านตัวแปร imagePreview
-      const previewUrl = URL.createObjectURL(file)
-      imagePreview.value = previewUrl
-
-      // 2. ทำการอัปโหลดไฟล์จริง
-      const publicUrl = await compressAndUpload(file, 'products')
-      
-      // 3. พออัปโหลดเสร็จ เก็บ URL ลง currentProduct เพื่อเตรียมบันทึก
-      if (publicUrl) {
-        currentProduct.value.image = publicUrl
-      }
-    } catch (err) {
-      console.error('Upload error:', err)
-      alert('เกิดข้อผิดพลาดในการอัปโหลดรูปภาพ')
-    } finally {
-      isUploadingImage.value = false
-    }
+    // 1. ให้รูปแสดงบนหน้าจอทันทีผ่านตัวแปร imagePreview
+    const previewUrl = URL.createObjectURL(file)
+    imagePreview.value = previewUrl
+    
+    // 2. เก็บไฟล์จริงไว้ใน currentProduct.image เพื่อส่งไปกับ FormData ในภายหลัง
+    // @ts-ignore
+    currentProduct.value.image = file
   }
 }
 
@@ -176,13 +164,18 @@ const saveProduct = async () => {
   try {
     if (isEditing.value && editingId.value) {
       await updateProduct(editingId.value, currentProduct.value)
+      isModalOpen.value = false
     } else {
-      await addProduct(currentProduct.value)
+      const result = await addProduct(currentProduct.value)
+      if (result.success) {
+        isModalOpen.value = false
+      } else {
+        alert(result.error || 'เกิดข้อผิดพลาดในการเพิ่มสินค้า')
+      }
     }
-    isModalOpen.value = false
   } catch (err: any) {
     console.error('Error saving product:', err)
-    const errorMsg = err.data?.statusMessage || err.statusMessage || 'เกิดข้อผิดพลาดในการบันทึกสินค้า'
+    const errorMsg = err.data?.message || err.message || 'เกิดข้อผิดพลาดในการบันทึกสินค้า'
     alert(errorMsg)
   } finally {
     isSaving.value = false

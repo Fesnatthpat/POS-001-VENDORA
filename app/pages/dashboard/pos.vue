@@ -7,7 +7,7 @@ import { useFeatures } from '~/composables/useFeatures'
 import { compressAndUpload } from '~/utils/storage'
 
 const { customers } = useCustomers()
-const { products } = useProducts()
+const { products, fetchProducts, categories } = useProducts()
 const { addOrder, holdBill, heldBills, resumeBill, deleteHeldBill } = useOrders()
 const { settings } = useSettings()
 const { features } = useFeatures()
@@ -266,6 +266,9 @@ const completeCheckout = async () => {
     }
 
     const order = await addOrder(orderData)
+
+    // Update product stock in local state by fetching latest from API
+    await fetchProducts()
 
     lastOrder.value = order
     isCheckoutModalOpen.value = false
