@@ -1,7 +1,7 @@
 import { ref, onMounted } from 'vue'
 
 export interface PointHistory {
-  id: number
+  id: number | string
   amount: number
   after: number
   note: string
@@ -9,7 +9,8 @@ export interface PointHistory {
 }
 
 export interface Customer {
-  id: number
+  id: number | string
+  _id?: number | string
   name: string
   phone: string
   points: number
@@ -31,7 +32,11 @@ export const useCustomers = () => {
           Authorization: `Bearer ${token.value}`
         }
       })
-      customers.value = response
+      // Ensure each customer has an 'id' field even if API returns '_id'
+      customers.value = response.map(c => ({
+        ...c,
+        id: c.id || c._id || ''
+      }))
     } catch (error) {
       console.error('Error fetching customers:', error)
     }
@@ -54,7 +59,7 @@ export const useCustomers = () => {
     }
   }
 
-  const updateCustomer = async (id: number, customer: Partial<Customer>) => {
+  const updateCustomer = async (id: number | string, customer: Partial<Customer>) => {
     try {
       await $fetch(`${apiUrl}/customers/${id}`, {
         method: 'PUT',
@@ -71,7 +76,7 @@ export const useCustomers = () => {
     }
   }
 
-  const deleteCustomer = async (id: number) => {
+  const deleteCustomer = async (id: number | string) => {
     try {
       await $fetch(`${apiUrl}/customers/${id}`, {
         method: 'DELETE',
@@ -87,15 +92,17 @@ export const useCustomers = () => {
     }
   }
 
-  const redeemReward = async (id: number, points: number, note: string = 'แลกรางวัล') => {
+  const redeemReward = async (id: number | string, points: number, note: string = 'แลกรางวัล') => {
     try {
-      await $fetch(`${apiUrl}/customer/${id}/redeem`, {
+      console.log(`Calling Redeem API for customer ${id} with ${points} points`)
+      const res = await $fetch(`${apiUrl}/customer/${id}/redeem`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token.value}`
         },
         body: { points, note }
       })
+      console.log('Redeem API Response:', res)
       await fetchCustomers()
       return { success: true }
     } catch (error: any) {
@@ -104,15 +111,17 @@ export const useCustomers = () => {
     }
   }
 
-  const adjustPoints = async (id: number, amount: number, note: string) => {
+  const adjustPoints = async (id: number | string, amount: number, note: string) => {
     try {
-      await $fetch(`${apiUrl}/customer/${id}/adjust-points`, {
+      console.log(`Calling Adjust Points API for customer ${id}: ${amount} points`)
+      const res = await $fetch(`${apiUrl}/customer/${id}/adjust-points`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token.value}`
         },
         body: { amount, note }
       })
+      console.log('Adjust Points API Response:', res)
       await fetchCustomers()
       return { success: true }
     } catch (error: any) {

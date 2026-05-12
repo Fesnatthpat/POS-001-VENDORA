@@ -95,6 +95,8 @@ const handleAdjustPoints = async () => {
   isSaving.value = true
   const actualAmount = adjustForm.value.type === 'add' ? adjustForm.value.amount : -adjustForm.value.amount
   
+  console.log('Adjusting points for:', editingCustomer.value.id, 'Amount:', actualAmount)
+
   if (adjustForm.value.type === 'remove' && editingCustomer.value.points < adjustForm.value.amount) {
     alert('แต้มสมาชิกไม่พอหัก!')
     isSaving.value = false
@@ -102,6 +104,7 @@ const handleAdjustPoints = async () => {
   }
 
   const res = await adjustPoints(editingCustomer.value.id, actualAmount, adjustForm.value.note)
+  console.log('Adjustment result:', res)
   isSaving.value = false
   if (res.success) {
     isAdjustModalOpen.value = false
@@ -113,16 +116,15 @@ const handleAdjustPoints = async () => {
 
 const handleDelete = async (id: number) => {
   if (confirm('ยืนยันการลบข้อมูลสมาชิก?')) {
-    await deleteCustomer(id)
+    const res = await deleteCustomer(id)
+    if (!res.success) alert(res.error)
   }
 }
 
 const handleRedeem = async (customer: any) => {
   const threshold = settings.value.loyaltyPointThreshold || 10
-  if (customer.points < threshold) {
-    alert(`แต้มไม่พอ! ต้องมีอย่างน้อย ${threshold} แต้ม`)
-    return
-  }
+  if (customer.points < threshold) return // Should be handled by disabled button, but for safety
+
   if (confirm(`ยืนยันการแลกรางวัล? (หัก ${threshold} แต้ม)`)) {
     const res = await redeemReward(customer.id, threshold, `แลกรางวัล (หัก ${threshold} แต้ม)`)
     if (res.success) {
@@ -213,7 +215,8 @@ const formatDateTime = (dateStr: string) => {
                  <span>+/- แต้ม</span>
               </button>
               <button @click="handleRedeem(customer)"
-                 class="px-5 py-2.5 bg-amber-500 text-white rounded-xl font-bold text-xs shadow-lg shadow-amber-900/10 hover:bg-amber-600 disabled:opacity-30 transition-all flex items-center gap-2">
+                 :disabled="customer.points < (settings.loyaltyPointThreshold || 10)"
+                 class="px-5 py-2.5 bg-amber-500 text-white rounded-xl font-bold text-xs shadow-lg shadow-amber-900/10 hover:bg-amber-600 disabled:opacity-30 disabled:cursor-not-allowed transition-all flex items-center gap-2">
                  <span>แลกรางวัล</span>
               </button>
            </div>
