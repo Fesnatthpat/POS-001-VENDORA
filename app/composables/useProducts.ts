@@ -55,11 +55,6 @@ export const useProducts = () => {
     }
   }
 
-  // Fetch on initialization
-  onMounted(() => {
-    fetchProducts()
-  })
-
   const addProduct = async (product: any) => {
     isLoading.value = true
     try {
@@ -96,25 +91,92 @@ export const useProducts = () => {
     }
   }
 
-  const updateProduct = (id: number, updatedProduct: any) => {
-    const index = products.value.findIndex(p => p.id === id)
-    if (index !== -1) {
-      products.value[index] = { ...products.value[index], ...updatedProduct }
+  const updateProduct = async (id: number, updatedProduct: any) => {
+    try {
+      const formData = new FormData()
+      Object.keys(updatedProduct).forEach(key => {
+        if (updatedProduct[key] !== undefined && updatedProduct[key] !== null) {
+          formData.append(key, updatedProduct[key])
+        }
+      })
+
+      await $fetch(`${apiUrl}/product/${id}`, {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${token.value}`
+        },
+        body: formData
+      })
+      await fetchProducts()
+      return { success: true }
+    } catch (error: any) {
+      console.error('Error updating product:', error)
+      return { success: false, error: error.data?.message || 'ไม่สามารถแก้ไขสินค้าได้' }
     }
   }
 
-  const deleteProduct = (id: number) => {
-    products.value = products.value.filter(p => p.id !== id)
+  const deleteProduct = async (id: number) => {
+    try {
+      await $fetch(`${apiUrl}/product/${id}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token.value}`
+        }
+      })
+      await fetchProducts()
+      return { success: true }
+    } catch (error: any) {
+      console.error('Error deleting product:', error)
+      return { success: false, error: error.data?.message || 'ไม่สามารถลบสินค้าได้' }
+    }
   }
 
-  const addStock = (id: number, amount: number) => {
-    const product = products.value.find(p => p.id === id)
-    if (product) product.stock += amount
+  const stockIn = async (productId: number, quantity: number, supplier: string, cost: number, note: string) => {
+    try {
+      await $fetch(`${apiUrl}/product/${productId}/stock-in`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token.value}`
+        },
+        body: { quantity, supplier, cost, note }
+      })
+      await fetchProducts()
+      // Note: Backend does not support fetching stock movements yet
+      return { success: true }
+    } catch (error: any) {
+      console.error('Error stock in:', error)
+      return { success: false, error: error.data?.message || 'ไม่สามารถบันทึกการรับสินค้าได้' }
+    }
   }
 
-  const stockIn = (id: number, amount: number) => {
-    addStock(id, amount)
+  const addStock = async (productId: number, quantity: number, note: string) => {
+    try {
+      await $fetch(`${apiUrl}/product/${productId}/stock`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token.value}`
+        },
+        body: { quantity, note }
+      })
+      await fetchProducts()
+      // Note: Backend does not support fetching stock movements yet
+      return { success: true }
+    } catch (error: any) {
+      console.error('Error adding stock:', error)
+      return { success: false, error: error.data?.message || 'ไม่สามารถปรับสต็อกได้' }
+    }
   }
+
+  const fetchStockMovements = async () => {
+    // This endpoint is not yet implemented on the server
+    console.warn('Stock movements history is not yet supported by the API.')
+    stockMovements.value = []
+  }
+
+  // Fetch on initialization
+  onMounted(() => {
+    fetchProducts()
+  })
 
   const addCategory = (name: string) => {
     categories.value.push(name)

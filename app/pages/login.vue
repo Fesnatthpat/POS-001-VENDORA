@@ -20,7 +20,9 @@ const handleLogin = async () => {
   })
 
   if (result.success) {
-    navigateTo('/dashboard')
+    // Give a tiny bit of time for cookies/state to settle
+    await nextTick()
+    await navigateTo('/dashboard', { replace: true })
   } else {
     error.value = result.error || 'การเข้าสู่ระบบล้มเหลว'
   }

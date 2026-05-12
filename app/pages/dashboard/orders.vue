@@ -46,7 +46,15 @@ const formatDate = (dateStr: string) => {
   })
 }
 
+const getImageUrl = (path: string) => {
+  if (!path) return ''
+  if (path.startsWith('http') || path.startsWith('blob:') || path.startsWith('data:')) return path
+  // If it's a relative path from the legacy system
+  return `https://api-vendora.onrender.com/${path}`
+}
+
 // --- Actions ---
+// ... (omitting rest for brevity, but I will include it in the real call)
 const viewReceipt = (order: any) => {
   selectedOrder.value = order
   isReceiptModalOpen.value = true
@@ -198,7 +206,7 @@ const handleVoidOrder = (orderId: string) => {
            <div v-if="selectedOrder?.paymentSlip" class="mb-6">
              <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 text-center">หลักฐานการชำระเงิน</p>
              <div class="rounded-xl overflow-hidden border border-slate-200 shadow-sm">
-                <img :src="selectedOrder.paymentSlip" class="w-full h-auto" />
+                <img :src="getImageUrl(selectedOrder.paymentSlip)" class="w-full h-auto" />
              </div>
           </div>
           

@@ -4,7 +4,6 @@ import { useProducts } from '~/composables/useProducts'
 import { useOrders } from '~/composables/useOrders'
 import { useSettings } from '~/composables/useSettings'
 import { useFeatures } from '~/composables/useFeatures'
-import { compressAndUpload } from '~/utils/storage'
 
 const { customers } = useCustomers()
 const { products, fetchProducts, categories } = useProducts()
@@ -43,7 +42,8 @@ const isCartOpenMobile = ref(false)
 
 const paymentMethod = ref<'cash' | 'transfer' | 'qr'>('cash')
 const amountReceived = ref<number | null>(null)
-const paymentSlip = ref<string | null>(null)
+const paymentSlip = ref<File | null>(null)
+const paymentSlipPreview = ref<string | null>(null)
 const isUploadingSlip = ref(false)
 const notes = ref('')
 const selectedCustomerId = ref<number | null>(null)
@@ -105,20 +105,8 @@ const changeDue = computed(() => {
 const handleSlipUpload = async (event: any) => {
   const file = event.target.files[ 0 ]
   if (file) {
-    isUploadingSlip.value = true
-    try {
-      const publicUrl = await compressAndUpload(file, 'slips')
-      if (publicUrl) {
-        paymentSlip.value = publicUrl
-      } else {
-        alert('อัปโหลดสลิปไม่สำเร็จ กรุณาตรวจสอบการตั้งค่า Supabase')
-      }
-    } catch (err) {
-      console.error(err)
-      alert('เกิดข้อผิดพลาดในการอัปโหลดสลิป')
-    } finally {
-      isUploadingSlip.value = false
-    }
+    paymentSlip.value = file
+    paymentSlipPreview.value = URL.createObjectURL(file)
   }
 }
 
@@ -211,6 +199,7 @@ const openCheckout = () => {
   if (cart.value.length === 0) return
   amountReceived.value = paymentMethod.value === 'cash' ? null : cartTotal.value
   paymentSlip.value = null
+  paymentSlipPreview.value = null
   notes.value = ''
   selectedCustomerId.value = null
   isCheckoutModalOpen.value = true
@@ -229,13 +218,16 @@ const completeCheckout = async () => {
   }
 
   try {
-    const totalCost = cart.value.reduce((sum, item) => sum + (item.cost * item.quantity), 0)
+    const totalCostValue = cart.value.reduce((sum, item) => sum + ((item.cost || 0) * item.quantity), 0)
+    const roundedTotalCost = Math.round(totalCostValue * 100) / 100
+    const roundedTotal = Math.round(cartTotal.value * 100) / 100
+    const roundedProfit = Math.round((roundedTotal - roundedTotalCost) * 100) / 100
 
     // Calculate points earned
     let pointsEarned = 0
     if (selectedCustomerId.value) {
       if (settings.value.loyaltyPointType === 'amount') {
-        pointsEarned = Math.floor(cartTotal.value / (settings.value.loyaltyPointRate || 20))
+        pointsEarned = Math.floor(roundedTotal / (settings.value.loyaltyPointRate || 20))
       } else {
         const totalItems = cart.value.reduce((sum, item) => sum + item.quantity, 0)
         pointsEarned = totalItems * (settings.value.loyaltyPointRate || 1)
@@ -244,23 +236,24 @@ const completeCheckout = async () => {
 
     // Create Order - The backend now handles stock deduction and points update in a transaction
     const orderData = {
+      id: `ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`, // Generate a unique ID string
       items: cart.value.map(item => ({
-        id: item.id,
-        name: item.name,
-        price: item.price,
-        cost: item.cost,
-        quantity: item.quantity
+        id: Number(item.id),
+        name: String(item.name),
+        price: Number(item.price),
+        cost: Number(item.cost || 0),
+        quantity: Number(item.quantity)
       })),
       subtotal: subtotal.value,
       discount: discountAmount.value,
-      total: cartTotal.value,
-      totalCost: totalCost,
-      profit: cartTotal.value - totalCost,
+      total: roundedTotal,
+      totalCost: roundedTotalCost,
+      profit: roundedProfit,
       paymentMethod: paymentMethod.value,
-      customerId: selectedCustomerId.value || undefined,
-      receivedAmount: amountReceived.value || undefined,
+      customerId: selectedCustomerId.value ? Number(selectedCustomerId.value) : undefined,
+      receivedAmount: amountReceived.value ? Number(amountReceived.value) : undefined,
       changeDue: changeDue.value,
-      notes: notes.value,
+      notes: notes.value || '',
       paymentSlip: paymentSlip.value || undefined,
       pointsEarned: pointsEarned > 0 ? pointsEarned : undefined
     }
@@ -276,6 +269,8 @@ const completeCheckout = async () => {
     cart.value = []
     discountValue.value = 0
     isCartOpenMobile.value = false
+    paymentSlip.value = null
+    paymentSlipPreview.value = null
 
   } catch (error: any) {
     console.error("Checkout Error: ", error)
@@ -293,8 +288,9 @@ const formatDate = (dateStr: string) => {
   return new Date(dateStr).toLocaleString('th-TH')
 }
 
-const getImageUrl = (path: string) => {
+const getImageUrl = (path: string | File | null) => {
   if (!path) return ''
+  if (path instanceof File) return URL.createObjectURL(path)
   if (path.startsWith('http') || path.startsWith('blob:') || path.startsWith('data:')) return path
   // If it's a relative path from the legacy system
   return `https://api-vendora.onrender.com/${path}`
@@ -646,7 +642,7 @@ const getImageUrl = (path: string) => {
                   สลิป</label>
                 <div
                   class="relative w-full aspect-video bg-slate-100 border-2 border-dashed border-slate-300 rounded-3xl overflow-hidden group flex items-center justify-center transition-all hover:bg-slate-200">
-                  <img v-if="paymentSlip" :src="getImageUrl(paymentSlip)" class="w-full h-full object-cover" />
+                  <img v-if="paymentSlipPreview" :src="paymentSlipPreview" class="w-full h-full object-cover" />
                   <div v-else class="text-center p-6">
                     <span class="text-4xl block mb-2">📸</span>
                     <span
@@ -661,8 +657,8 @@ const getImageUrl = (path: string) => {
 
                   <input type="file" accept="image/*" capture="environment" @change="handleSlipUpload"
                     class="absolute inset-0 opacity-0 cursor-pointer" :disabled="isUploadingSlip" />
-                  <div v-if="paymentSlip && !isUploadingSlip" class="absolute top-4 right-4">
-                    <button @click="paymentSlip = null"
+                  <div v-if="paymentSlipPreview && !isUploadingSlip" class="absolute top-4 right-4">
+                    <button @click="paymentSlip = null; paymentSlipPreview = null"
                       class="bg-rose-500 text-white p-2 rounded-xl shadow-lg hover:bg-rose-600 transition-all font-black text-xs">ถ่ายใหม่</button>
                   </div>
                 </div>

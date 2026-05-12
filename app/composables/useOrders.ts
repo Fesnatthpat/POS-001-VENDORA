@@ -27,12 +27,31 @@ export const useOrders = () => {
 
   const addOrder = async (orderData: any) => {
     try {
+      const formData = new FormData()
+      
+      Object.keys(orderData).forEach(key => {
+        const value = orderData[key]
+        if (value === undefined || value === null) return
+        
+        if (key === 'items') {
+          // Backend expects items as a JSON string in multipart/form-data
+          formData.append(key, JSON.stringify(value))
+        } else if (value instanceof File) {
+          formData.append(key, value)
+        } else if (typeof value === 'number') {
+          // Round to 2 decimal places to prevent DB errors with float precision
+          formData.append(key, (Math.round(value * 100) / 100).toString())
+        } else {
+          formData.append(key, value.toString())
+        }
+      })
+
       const response = await $fetch<any>(`${apiUrl}/order`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token.value}`
         },
-        body: orderData
+        body: formData
       })
       
       // Refresh local orders list
@@ -40,7 +59,8 @@ export const useOrders = () => {
       return response.data || response
     } catch (error: any) {
       console.error('Error adding order:', error)
-      throw new Error(error.data?.message || 'ไม่สามารถบันทึกรายการสั่งซื้อได้')
+      const message = error.data?.message || error.message || 'ไม่สามารถบันทึกรายการสั่งซื้อได้'
+      throw new Error(message)
     }
   }
 
