@@ -14,7 +14,7 @@ definePageMeta({
 
 // --- State ---
 const searchQuery = ref('')
-const selectedDate = ref(new Date().toISOString().split('T')[0])
+const selectedDate = ref<string>(new Date().toISOString().split('T')[0] as string)
 const isReceiptModalOpen = ref(false)
 const selectedOrder = ref<any>(null)
 
@@ -40,6 +40,7 @@ const formatCurrency = (val: number) => {
 }
 
 const formatDate = (dateStr: string) => {
+  if (!dateStr) return '-'
   return new Date(dateStr).toLocaleString('th-TH', {
     dateStyle: 'medium',
     timeStyle: 'short'
@@ -54,7 +55,6 @@ const getImageUrl = (path: string) => {
 }
 
 // --- Actions ---
-// ... (omitting rest for brevity, but I will include it in the real call)
 const viewReceipt = (order: any) => {
   selectedOrder.value = order
   isReceiptModalOpen.value = true
@@ -64,6 +64,12 @@ const handleVoidOrder = (orderId: string) => {
   if (confirm('คุณต้องการยกเลิกคำสั่งซื้อนี้ใช่หรือไม่? การกระทำนี้ไม่สามารถย้อนกลับได้')) {
     voidOrder(orderId)
     isReceiptModalOpen.value = false
+  }
+}
+
+const handlePrint = () => {
+  if (process.client) {
+    window.print()
   }
 }
 </script>
@@ -217,7 +223,7 @@ const handleVoidOrder = (orderId: string) => {
 
         <div class="p-6 lg:p-8 bg-white border-t border-slate-100 flex-shrink-0">
            <div class="grid grid-cols-2 gap-3 mb-4">
-              <button @click="window.print()" class="py-3 bg-slate-900 text-white rounded-xl font-black text-xs">พิมพ์ใบเสร็จ</button>
+              <button @click="handlePrint" class="py-3 bg-slate-900 text-white rounded-xl font-black text-xs">พิมพ์ใบเสร็จ</button>
               <button v-if="selectedOrder?.status !== 'voided'" @click="handleVoidOrder(selectedOrder.id)" 
                 class="py-3 bg-rose-50 text-rose-600 border border-rose-100 rounded-xl font-black text-xs hover:bg-rose-100 transition-all">ยกเลิกบิลนี้</button>
            </div>

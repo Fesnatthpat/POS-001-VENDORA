@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useSettings, type StoreSettings } from '~/composables/useSettings'
+import { ref, watch } from 'vue'
 
 const { settings, saveSettings, exportBackup, importBackup } = useSettings()
 
@@ -10,16 +11,30 @@ definePageMeta({
 
 // --- State ---
 const form = ref<StoreSettings>({ ...settings.value })
+
+// Watch for changes in settings (e.g., after fetchSettings completes)
+watch(settings, (newSettings) => {
+  form.value = { ...newSettings }
+}, { immediate: true, deep: true })
+
 const isSaving = ref(false)
 const fileInput = ref<HTMLInputElement | null>(null)
 
 // --- Actions ---
 const handleSave = async () => {
   isSaving.value = true
-  await new Promise(resolve => setTimeout(resolve, 800))
-  saveSettings(form.value)
+  // Small delay for UX/Animation
+  await new Promise(resolve => setTimeout(resolve, 500))
+  
+  const result = await saveSettings(form.value)
+  
   isSaving.value = false
-  alert('บันทึกการตั้งค่าสำเร็จ')
+  
+  if (result.success) {
+    alert('บันทึกการตั้งค่าสำเร็จ')
+  } else {
+    alert('เกิดข้อผิดพลาด: ' + result.error)
+  }
 }
 
 const triggerImport = () => {

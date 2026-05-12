@@ -18,12 +18,19 @@ export default defineNuxtConfig({
     plugins: [
       tailwindcss(),
     ],
+    // เพิ่มส่วนนี้เข้าไปครับ
+    optimizeDeps: {
+      include: [
+        '@vue/devtools-core',
+        '@vue/devtools-kit',
+        'chart.js',
+        'vue-chartjs',
+      ]
+    }
   },
   runtimeConfig: {
     public: {
-      // API points to nowhere or can be removed if not used by any third party
       vendoraUrlApi: process.env.VENDORA_URL_API || 'https://api-vendora.onrender.com/api',
-      // vendoraUrlApi: process.env.VENDORA_URL_API || 'http://localhost:5000/api'
     }
   }
 });

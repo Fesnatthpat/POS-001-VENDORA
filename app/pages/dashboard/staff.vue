@@ -96,7 +96,7 @@ const formatDate = (dateStr: string) => {
         <div class="space-y-4">
            <div class="flex justify-between text-xs">
               <span class="text-slate-400 font-bold">วันที่เริ่มงาน:</span>
-              <span class="text-slate-600 font-black">{{ formatDate(staff.joinDate) }}</span>
+              <span class="text-slate-600 font-black">{{ formatDate(staff.joinDate || '') }}</span>
            </div>
            <div class="flex justify-between text-xs items-center">
               <span class="text-slate-400 font-bold">สถานะ:</span>

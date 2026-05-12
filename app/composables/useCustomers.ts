@@ -1,33 +1,45 @@
 import { ref, onMounted } from 'vue'
 
+export interface PointHistory {
+  id: number
+  amount: number
+  after: number
+  note: string
+  date: string
+}
+
+export interface Customer {
+  id: number
+  name: string
+  phone: string
+  points: number
+  level: 'Silver' | 'Gold' | 'Platinum'
+  pointHistory: PointHistory[]
+}
+
 export const useCustomers = () => {
   const config = useRuntimeConfig()
   const apiUrl = config.public.vendoraUrlApi
   const token = useCookie('auth_token')
-
-  const customers = ref<any[]>([])
-  const isLoading = ref(false)
+  const customers = ref<Customer[]>([])
 
   const fetchCustomers = async () => {
     if (!token.value) return
-    isLoading.value = true
     try {
-      const response = await $fetch<any>(`${apiUrl}/customers`, {
+      const response = await $fetch<Customer[]>(`${apiUrl}/customers`, {
         headers: {
           Authorization: `Bearer ${token.value}`
         }
       })
-      customers.value = response.data || response
+      customers.value = response
     } catch (error) {
       console.error('Error fetching customers:', error)
-    } finally {
-      isLoading.value = false
     }
   }
 
-  const addCustomer = async (customer: any) => {
+  const addCustomer = async (customer: Partial<Customer>) => {
     try {
-      await $fetch(`${apiUrl}/customer`, {
+      await $fetch(`${apiUrl}/customers`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token.value}`
@@ -42,26 +54,26 @@ export const useCustomers = () => {
     }
   }
 
-  const updateCustomer = async (id: number, updatedCustomer: any) => {
+  const updateCustomer = async (id: number, customer: Partial<Customer>) => {
     try {
-      await $fetch(`${apiUrl}/customer/${id}`, {
+      await $fetch(`${apiUrl}/customers/${id}`, {
         method: 'PUT',
         headers: {
           Authorization: `Bearer ${token.value}`
         },
-        body: updatedCustomer
+        body: customer
       })
       await fetchCustomers()
       return { success: true }
     } catch (error: any) {
       console.error('Error updating customer:', error)
-      return { success: false, error: error.data?.message || 'ไม่สามารถแก้ไขข้อมูลลูกค้าได้' }
+      return { success: false, error: error.data?.message || 'ไม่สามารถอัปเดตข้อมูลลูกค้าได้' }
     }
   }
 
   const deleteCustomer = async (id: number) => {
     try {
-      await $fetch(`${apiUrl}/customer/${id}`, {
+      await $fetch(`${apiUrl}/customers/${id}`, {
         method: 'DELETE',
         headers: {
           Authorization: `Bearer ${token.value}`
@@ -75,18 +87,37 @@ export const useCustomers = () => {
     }
   }
 
-  const redeemReward = async (id: number, points: number) => {
+  const redeemReward = async (id: number, points: number, note: string = 'แลกรางวัล') => {
     try {
       await $fetch(`${apiUrl}/customer/${id}/redeem`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token.value}`
         },
-        body: { points }
+        body: { points, note }
       })
       await fetchCustomers()
-    } catch (error) {
+      return { success: true }
+    } catch (error: any) {
       console.error('Error redeeming reward:', error)
+      return { success: false, error: error.data?.message || 'ไม่สามารถแลกรางวัลได้' }
+    }
+  }
+
+  const adjustPoints = async (id: number, amount: number, note: string) => {
+    try {
+      await $fetch(`${apiUrl}/customer/${id}/adjust-points`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token.value}`
+        },
+        body: { amount, note }
+      })
+      await fetchCustomers()
+      return { success: true }
+    } catch (error: any) {
+      console.error('Error adjusting points:', error)
+      return { success: false, error: error.data?.message || 'ไม่สามารถปรับปรุงแต้มได้' }
     }
   }
 
@@ -96,11 +127,11 @@ export const useCustomers = () => {
 
   return {
     customers,
-    isLoading,
     fetchCustomers,
     addCustomer,
     updateCustomer,
     deleteCustomer,
-    redeemReward
+    redeemReward,
+    adjustPoints
   }
 }

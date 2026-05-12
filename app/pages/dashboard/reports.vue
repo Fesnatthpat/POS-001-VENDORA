@@ -25,14 +25,17 @@ definePageMeta({
   layout: 'dashboard',
   middleware: [ 'feature-gate' ]
 })
-
 // --- State ---
-const selectedDate = ref(new Date().toISOString().split('T')[ 0 ])
+const selectedDate = ref<string>(new Date().toISOString().split('T')[0] as string)
 
 // --- Computed ---
 const targetDateObj = computed(() => new Date(selectedDate.value).toDateString())
 
+const formattedTargetDate = computed(() => new Date(selectedDate.value).toLocaleDateString('th-TH'))
+
 const dayOrdersAll = computed(() => orders.value.filter(o => new Date(o.timestamp).toDateString() === targetDateObj.value))
+// ... (rest of computed properties)
+
 const dayOrdersValid = computed(() => dayOrdersAll.value.filter(o => o.status !== 'voided'))
 const dayOrdersVoided = computed(() => dayOrdersAll.value.filter(o => o.status === 'voided'))
 
@@ -55,11 +58,13 @@ const bestSellers = computed(() => {
   const itemsMap: Record<string, { name: string, quantity: number, revenue: number }> = {}
   dayOrdersValid.value.forEach(order => {
     order.items.forEach((item: any) => {
-      if (!itemsMap[ item.id ]) {
-        itemsMap[ item.id ] = { name: item.name, quantity: 0, revenue: 0 }
+      const existing = itemsMap[item.id]
+      if (!existing) {
+        itemsMap[item.id] = { name: item.name, quantity: item.quantity, revenue: (item.price * item.quantity) }
+      } else {
+        existing.quantity += item.quantity
+        existing.revenue += (item.price * item.quantity)
       }
-      itemsMap[ item.id ].quantity += item.quantity
-      itemsMap[ item.id ].revenue += (item.price * item.quantity)
     })
   })
   return Object.values(itemsMap).sort((a, b) => b.quantity - a.quantity).slice(0, 5)

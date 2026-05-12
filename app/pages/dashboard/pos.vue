@@ -5,7 +5,7 @@ import { useOrders } from '~/composables/useOrders'
 import { useSettings } from '~/composables/useSettings'
 import { useFeatures } from '~/composables/useFeatures'
 
-const { customers } = useCustomers()
+const { customers, redeemReward } = useCustomers()
 const { products, fetchProducts, categories } = useProducts()
 const { addOrder, holdBill, heldBills, resumeBill, deleteHeldBill } = useOrders()
 const { settings } = useSettings()
@@ -81,17 +81,18 @@ const beforeTax = computed(() => {
   return amount
 })
 
-const taxAmount = computed(() => {
-  if (settings.value.includeTax) {
-    return cartTotal.value - beforeTax.value
-  }
-  return beforeTax.value * (settings.value.taxRate / 100)
-})
-
-const cartTotal = computed(() => {
+const cartTotal = computed<number>(() => {
   const base = Math.max(0, subtotal.value - discountAmount.value)
   if (settings.value.includeTax) return base
-  return base + taxAmount.value
+  return base + (base * (settings.value.taxRate / 100))
+})
+
+const taxAmount = computed<number>(() => {
+  const base = Math.max(0, subtotal.value - discountAmount.value)
+  if (settings.value.includeTax) {
+    return base - (base / (1 + settings.value.taxRate / 100))
+  }
+  return base * (settings.value.taxRate / 100)
 })
 
 const changeDue = computed(() => {
@@ -99,6 +100,17 @@ const changeDue = computed(() => {
     return Math.max(0, amountReceived.value - cartTotal.value)
   }
   return 0
+})
+
+const pointsToEarn = computed(() => {
+  if (!selectedCustomerId.value) return 0
+  if (settings.value.loyaltyPointType === 'amount') {
+    return Math.floor(cartTotal.value / (settings.value.loyaltyPointRate || 20))
+  } else {
+    // Both 'item' and 'quantity' use item count
+    const totalItems = cart.value.reduce((sum, item) => sum + item.quantity, 0)
+    return totalItems * (settings.value.loyaltyPointRate || 1)
+  }
 })
 
 // --- Actions ---
@@ -255,7 +267,7 @@ const completeCheckout = async () => {
       changeDue: changeDue.value,
       notes: notes.value || '',
       paymentSlip: paymentSlip.value || undefined,
-      pointsEarned: pointsEarned > 0 ? pointsEarned : undefined
+      pointsEarned: pointsToEarn.value > 0 ? pointsToEarn.value : undefined
     }
 
     const order = await addOrder(orderData)
@@ -275,6 +287,27 @@ const completeCheckout = async () => {
   } catch (error: any) {
     console.error("Checkout Error: ", error)
     alert('เกิดข้อผิดพลาดระหว่างชำระเงิน: ' + (error.message || error))
+  }
+}
+
+const handleRedeem = async () => {
+  if (!selectedCustomerId.value) return
+  const customer = customers.value.find(c => c.id === selectedCustomerId.value)
+  if (!customer) return
+
+  const threshold = settings.value.loyaltyPointThreshold || 10
+  if (customer.points < threshold) {
+    alert(`แต้มไม่พอ! ต้องมีอย่างน้อย ${threshold} แต้ม`)
+    return
+  }
+
+  if (confirm(`ยืนยันการแลกรางวัลสำหรับคุณ ${customer.name}? (หัก ${threshold} แต้ม)`)) {
+    const res = await redeemReward(customer.id, threshold, `แลกรางวัลหน้าร้าน (หัก ${threshold} แต้ม)`)
+    if (res.success) {
+      alert('แลกรางวัลสำเร็จ!')
+    } else {
+      alert(res.error)
+    }
   }
 }
 
@@ -556,16 +589,37 @@ const getImageUrl = (path: string | File | null) => {
             </div>
           </div>
 
+          <!-- Points to Earn Display -->
+          <div v-if="selectedCustomerId" 
+            class="bg-amber-50 border border-amber-100 rounded-2xl p-4 flex justify-between items-center animate-in fade-in slide-in-from-top-2 duration-300">
+             <div class="flex items-center gap-3">
+                <span class="text-2xl">⭐</span>
+                <div>
+                   <p class="text-[10px] font-black text-amber-600 uppercase tracking-widest">แต้มที่จะได้รับ</p>
+                   <p class="text-sm font-black text-slate-900">{{ pointsToEarn }} แต้ม</p>
+                </div>
+             </div>
+             <p class="text-[9px] font-bold text-amber-500 max-w-[150px] text-right">
+                {{ settings.loyaltyPointType === 'amount' ? `ทุกๆ ${settings.loyaltyPointRate} บาท รับ 1 แต้ม` : `ทุกๆ 1 ชิ้น รับ ${settings.loyaltyPointRate} แต้ม` }}
+             </p>
+          </div>
+
           <div class="space-y-6">
-            <div>
-              <label class="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">สมาชิกลูกค้า</label>
-              <select v-model="selectedCustomerId"
-                class="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 font-bold focus:ring-2 focus:ring-indigo-500 appearance-none text-sm transition-all">
-                <option :value="null">ลูกค้าทั่วไป (ไม่สะสมแต้ม)</option>
-                <option v-for="c in customers" :key="c.id" :value="c.id">
-                  {{ c.name }} ({{ c.phone }}) — {{ c.points }} แต้ม
-                </option>
-              </select>
+            <div class="flex items-end gap-3">
+              <div class="flex-1">
+                <label class="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">สมาชิกลูกค้า</label>
+                <select v-model="selectedCustomerId"
+                  class="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 font-bold focus:ring-2 focus:ring-indigo-500 appearance-none text-sm transition-all">
+                  <option :value="null">ลูกค้าทั่วไป (ไม่สะสมแต้ม)</option>
+                  <option v-for="c in customers" :key="c.id" :value="c.id">
+                    {{ c.name }} ({{ c.phone }}) — {{ c.points }} แต้ม
+                  </option>
+                </select>
+              </div>
+              <button v-if="selectedCustomerId" @click="handleRedeem"
+                class="px-6 py-4 bg-amber-500 text-white rounded-2xl font-black text-xs hover:bg-amber-600 shadow-lg shadow-amber-900/10 transition-all">
+                ใช้แต้ม
+              </button>
             </div>
 
             <div>

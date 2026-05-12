@@ -4,8 +4,10 @@ export default defineNuxtRouteMiddleware(async (to, from) => {
   // Ensure auth state is initialized (important for refreshes)
   await initAuth()
 
-  // If the route is /dashboard/dev, check for Admin role
-  if (to.path === '/dashboard/dev') {
+  // Admin-only routes
+  const adminRoutes = ['/dashboard/dev', '/dashboard/settings', '/dashboard/staff']
+
+  if (adminRoutes.some(path => to.path.startsWith(path))) {
     if (!isAdmin.value) {
       return navigateTo('/dashboard')
     }

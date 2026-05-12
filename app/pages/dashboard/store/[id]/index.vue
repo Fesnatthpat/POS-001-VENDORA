@@ -7,7 +7,7 @@ const route = useRoute()
 const { stores } = useStores()
 const storeId = route.params.id as string
 
-const store = computed(() => stores.value.find(s => s.id === storeId))
+const store = computed(() => stores.value.find(s => s.id === Number(storeId)))
 
 definePageMeta({
   layout: 'dashboard'

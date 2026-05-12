@@ -47,9 +47,12 @@ const recentTransactions = computed(() => {
 const todayBestSellers = computed(() => {
   const items: Record<number, { name: string, quantity: number }> = {}
   todayOrders.value.forEach(order => {
-    order.items.forEach(item => {
-      if (!items[item.id]) items[item.id] = { name: item.name, quantity: 0 }
-      items[item.id].quantity += item.quantity
+    order.items.forEach((item: any) => {
+      if (!items[item.id]) {
+        items[item.id] = { name: item.name, quantity: item.quantity }
+      } else {
+        items[item.id]!.quantity += item.quantity
+      }
     })
   })
   return Object.values(items).sort((a, b) => b.quantity - a.quantity).slice(0, 3)
@@ -57,7 +60,7 @@ const todayBestSellers = computed(() => {
 
 // Payment Split for Today
 const paymentSplit = computed(() => {
-  const methods = { cash: 0, transfer: 0, qr: 0 }
+  const methods: Record<string, number> = { cash: 0, transfer: 0, qr: 0 }
   todayOrders.value.forEach(o => {
     methods[o.paymentMethod] += o.total
   })
@@ -106,7 +109,7 @@ const chartOptions = {
   },
   scales: {
     y: { display: false, beginAtZero: true },
-    x: { grid: { display: false }, ticks: { font: { size: 10, weight: 'bold' }, color: '#94a3b8' } }
+    x: { grid: { display: false }, ticks: { font: { size: 10, weight: 'bold' as const }, color: '#94a3b8' } }
   }
 }
 
@@ -119,7 +122,7 @@ const formatDate = (dateStr: string) => {
 }
 
 const handleRedeemReward = (customer: any) => {
-  const threshold = settings.value.loyaltyPointThreshold || 10
+  const threshold = settings.value.loyaltyPointThreshold || 100
   if (confirm(`ยืนยันการแลกรางวัลสำหรับลูกค้า "${customer.name}"? (จะหัก ${threshold} แต้ม)`)) {
     redeemReward(customer.id, threshold)
   }
@@ -128,7 +131,7 @@ const handleRedeemReward = (customer: any) => {
 const customersReachedThreshold = computed(() => {
    if (!features.value.enableCustomers) return []
    return customers.value
-      .filter(c => c.points >= (settings.value.loyaltyPointThreshold || 10))
+      .filter(c => c.points >= (settings.value.loyaltyPointThreshold || 100))
       .sort((a, b) => b.points - a.points)
       .slice(0, 5)
 })

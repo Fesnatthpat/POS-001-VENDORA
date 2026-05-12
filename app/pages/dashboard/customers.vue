@@ -3,7 +3,7 @@ import { useCustomers } from '~/composables/useCustomers'
 import { useOrders } from '~/composables/useOrders'
 import { useSettings } from '~/composables/useSettings'
 
-const { customers, addCustomer, updateCustomer, deleteCustomer, redeemReward } = useCustomers()
+const { customers, addCustomer, updateCustomer, deleteCustomer, redeemReward, adjustPoints } = useCustomers()
 const { orders } = useOrders()
 const { settings } = useSettings()
 
@@ -15,15 +15,24 @@ definePageMeta({
 // --- State ---
 const searchQuery = ref('')
 const isModalOpen = ref(false)
+const isAdjustModalOpen = ref(false)
 const isHistoryModalOpen = ref(false)
 const isEditing = ref(false)
+const isSaving = ref(false)
 const editingId = ref<number | null>(null)
+const editingCustomer = ref<any>(null)
 const selectedCustomerForHistory = ref<any>(null)
 
 const form = ref<any>({
   name: '',
   phone: '',
   level: 'Silver'
+})
+
+const adjustForm = ref({
+  amount: 1,
+  type: 'add' as 'add' | 'remove',
+  note: ''
 })
 
 // --- Computed ---
@@ -53,34 +62,74 @@ const openEditModal = (customer: any) => {
   isModalOpen.value = true
 }
 
+const openAdjustModal = (customer: any) => {
+  editingCustomer.value = customer
+  adjustForm.value = { amount: 1, type: 'remove', note: 'แลกรางวัล/ปรับปรุงแต้ม' }
+  isAdjustModalOpen.value = true
+}
+
 const openHistoryModal = (customer: any) => {
   selectedCustomerForHistory.value = customer
   isHistoryModalOpen.value = true
 }
 
-const saveCustomer = () => {
+const saveCustomer = async () => {
+  isSaving.value = true
+  let res
   if (isEditing.value && editingId.value) {
-    updateCustomer(editingId.value, form.value)
+    res = await updateCustomer(editingId.value, form.value)
   } else {
-    addCustomer(form.value)
+    res = await addCustomer(form.value)
   }
-  isModalOpen.value = false
+  isSaving.value = false
+  if (res.success) isModalOpen.value = false
 }
 
-const handleDelete = (id: number) => {
+const handleAdjustPoints = async () => {
+  if (!editingCustomer.value) return
+  if (adjustForm.value.amount <= 0) {
+    alert('กรุณาระบุจำนวนแต้มที่ถูกต้อง')
+    return
+  }
+
+  isSaving.value = true
+  const actualAmount = adjustForm.value.type === 'add' ? adjustForm.value.amount : -adjustForm.value.amount
+  
+  if (adjustForm.value.type === 'remove' && editingCustomer.value.points < adjustForm.value.amount) {
+    alert('แต้มสมาชิกไม่พอหัก!')
+    isSaving.value = false
+    return
+  }
+
+  const res = await adjustPoints(editingCustomer.value.id, actualAmount, adjustForm.value.note)
+  isSaving.value = false
+  if (res.success) {
+    isAdjustModalOpen.value = false
+    alert('ปรับปรุงแต้มสำเร็จ')
+  } else {
+    alert(res.error)
+  }
+}
+
+const handleDelete = async (id: number) => {
   if (confirm('ยืนยันการลบข้อมูลสมาชิก?')) {
-    deleteCustomer(id)
+    await deleteCustomer(id)
   }
 }
 
-const handleRedeem = (customer: any) => {
-  const threshold = settings.value.loyaltyPointThreshold || 100
+const handleRedeem = async (customer: any) => {
+  const threshold = settings.value.loyaltyPointThreshold || 10
   if (customer.points < threshold) {
     alert(`แต้มไม่พอ! ต้องมีอย่างน้อย ${threshold} แต้ม`)
     return
   }
   if (confirm(`ยืนยันการแลกรางวัล? (หัก ${threshold} แต้ม)`)) {
-    redeemReward(customer.id, threshold)
+    const res = await redeemReward(customer.id, threshold, `แลกรางวัล (หัก ${threshold} แต้ม)`)
+    if (res.success) {
+      alert('แลกรางวัลสำเร็จ')
+    } else {
+      alert(res.error)
+    }
   }
 }
 
@@ -158,11 +207,62 @@ const formatDateTime = (dateStr: string) => {
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
               </button>
            </div>
-           <button @click="handleRedeem(customer)" :disabled="customer.points < (settings.loyaltyPointThreshold || 100)"
-              class="px-5 py-2.5 bg-amber-500 text-white rounded-xl font-bold text-xs shadow-lg shadow-amber-900/10 hover:bg-amber-600 disabled:opacity-30 transition-all flex items-center gap-2">
-              <span>แลกรางวัล</span>
-           </button>
+           <div class="flex gap-2">
+              <button @click="openAdjustModal(customer)"
+                 class="px-4 py-2.5 bg-slate-900 text-white rounded-xl font-bold text-xs hover:bg-slate-800 transition-all flex items-center gap-2">
+                 <span>+/- แต้ม</span>
+              </button>
+              <button @click="handleRedeem(customer)"
+                 class="px-5 py-2.5 bg-amber-500 text-white rounded-xl font-bold text-xs shadow-lg shadow-amber-900/10 hover:bg-amber-600 disabled:opacity-30 transition-all flex items-center gap-2">
+                 <span>แลกรางวัล</span>
+              </button>
+           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- Points Adjustment Modal -->
+    <div v-if="isAdjustModalOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+      <div class="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+        <div class="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+          <div>
+            <h3 class="text-xl font-black text-slate-900">ปรับปรุงแต้มสะสม</h3>
+            <p class="text-xs text-indigo-600 font-bold uppercase tracking-widest mt-1">{{ editingCustomer?.name }}</p>
+          </div>
+          <button @click="isAdjustModalOpen = false" class="text-slate-400 hover:text-slate-600">
+             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+          </button>
+        </div>
+        <form @submit.prevent="handleAdjustPoints" class="p-8 space-y-6">
+          <div class="grid grid-cols-2 gap-4">
+             <button type="button" @click="adjustForm.type = 'add'" 
+               class="py-4 rounded-2xl font-black border-2 transition-all"
+               :class="adjustForm.type === 'add' ? 'border-emerald-500 bg-emerald-50 text-emerald-600' : 'border-slate-100 text-slate-400 hover:bg-slate-50'">
+               เพิ่มแต้ม (+)
+             </button>
+             <button type="button" @click="adjustForm.type = 'remove'" 
+               class="py-4 rounded-2xl font-black border-2 transition-all"
+               :class="adjustForm.type === 'remove' ? 'border-rose-500 bg-rose-50 text-rose-600' : 'border-slate-100 text-slate-400 hover:bg-slate-50'">
+               ลดแต้ม (-)
+             </button>
+          </div>
+          <div class="space-y-4">
+             <div>
+               <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">จำนวนแต้ม</label>
+               <input type="number" v-model="adjustForm.amount" required min="1" class="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-2xl font-black focus:ring-2 focus:ring-indigo-500 text-center" />
+             </div>
+             <div>
+               <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">หมายเหตุ</label>
+               <textarea v-model="adjustForm.note" class="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl font-bold focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="ระบุเหตุผลการปรับปรุง..."></textarea>
+             </div>
+          </div>
+          <div class="pt-4">
+            <button type="submit" :disabled="isSaving" class="w-full py-4 bg-slate-900 text-white rounded-2xl font-black shadow-lg hover:bg-slate-800 transition-all flex items-center justify-center gap-2">
+               <span v-if="isSaving" class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+               {{ isSaving ? 'กำลังบันทึก...' : 'ยืนยันการปรับปรุงแต้ม' }}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
 

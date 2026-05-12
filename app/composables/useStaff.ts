@@ -6,6 +6,7 @@ export type Staff = {
   role: string
   username: string
   status?: string
+  joinDate?: string
 }
 
 export const useStaff = () => {
