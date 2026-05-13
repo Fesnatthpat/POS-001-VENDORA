@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { useStaff, type Staff } from '~/composables/useStaff'
+import { useAuth } from '~/composables/useAuth'
 
 const { staffMembers, addStaff, updateStaff, deleteStaff } = useStaff()
+const { isAdmin } = useAuth()
 
 definePageMeta({
   layout: 'dashboard',
@@ -11,20 +13,22 @@ definePageMeta({
 // --- State ---
 const isModalOpen = ref(false)
 const isEditing = ref(false)
-const editingId = ref<number | null>(null)
+const isSaving = ref(false)
+const editingId = ref<number | string | null>(null)
 
 const form = ref<any>({
   name: '',
   username: '',
   password: '',
-  role: 'Cashier'
+  role: 'Cashier',
+  status: 'Active'
 })
 
 // --- Actions ---
 const openAddModal = () => {
   isEditing.value = false
   editingId.value = null
-  form.value = { name: '', username: '', password: '', role: 'Cashier' }
+  form.value = { name: '', username: '', password: '', role: 'Cashier', status: 'Active' }
   isModalOpen.value = true
 }
 
@@ -35,20 +39,35 @@ const openEditModal = (staff: Staff) => {
   isModalOpen.value = true
 }
 
-const saveStaffMember = () => {
-  if (isEditing.value && editingId.value) {
-    updateStaff(editingId.value, form.value)
-  } else {
-    addStaff(form.value)
+const saveStaffMember = async () => {
+  if (!form.value.name || !form.value.username || (!isEditing.value && !form.value.password)) {
+    alert('กรุณากรอกข้อมูลให้ครบถ้วน')
+    return
   }
-  isModalOpen.value = false
+
+  isSaving.value = true
+  let res
+  if (isEditing.value && editingId.value) {
+    res = await updateStaff(editingId.value, form.value)
+  } else {
+    res = await addStaff(form.value)
+  }
+  
+  isSaving.value = false
+  
+  if (res.success) {
+    isModalOpen.value = false
+    alert(isEditing.value ? 'อัปเดตข้อมูลพนักงานสำเร็จ' : 'เพิ่มพนักงานใหม่สำเร็จ')
+  } else {
+    alert(res.error)
+  }
 }
 
 const toggleStatus = (staff: Staff) => {
   updateStaff(staff.id, { status: staff.status === 'Active' ? 'Inactive' : 'Active' })
 }
 
-const handleDelete = (id: number) => {
+const handleDelete = (id: number | string) => {
   if (confirm('ยืนยันการลบรายชื่อพนักงาน?')) {
     deleteStaff(id)
   }
@@ -66,7 +85,7 @@ const formatDate = (dateStr: string) => {
         <h1 class="text-2xl lg:text-3xl font-black text-slate-900 tracking-tight">การจัดการพนักงาน</h1>
         <p class="text-slate-500 font-medium text-xs lg:text-sm mt-1">จัดการรายชื่อพนักงานและกำหนดสิทธิ์การเข้าถึง</p>
       </div>
-      <button @click="openAddModal" class="px-6 py-3 bg-indigo-600 text-white rounded-xl font-bold text-sm shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all flex items-center justify-center gap-2">
+      <button v-if="isAdmin" @click="openAddModal" class="px-6 py-3 bg-indigo-600 text-white rounded-xl font-bold text-sm shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all flex items-center justify-center gap-2">
          <span>+ เพิ่มพนักงานใหม่</span>
       </button>
     </div>
@@ -100,14 +119,14 @@ const formatDate = (dateStr: string) => {
            </div>
            <div class="flex justify-between text-xs items-center">
               <span class="text-slate-400 font-bold">สถานะ:</span>
-              <button @click="toggleStatus(staff)" class="flex items-center gap-1.5 group/btn">
+              <button @click="isAdmin && toggleStatus(staff)" :disabled="!isAdmin" class="flex items-center gap-1.5 group/btn" :class="{ 'cursor-default': !isAdmin }">
                  <div class="w-2 h-2 rounded-full" :class="staff.status === 'Active' ? 'bg-emerald-500' : 'bg-rose-500'"></div>
                  <span class="font-black uppercase tracking-tighter group-hover/btn:underline" :class="staff.status === 'Active' ? 'text-emerald-600' : 'text-rose-600'">{{ staff.status === 'Active' ? 'กำลังทำงาน' : 'ระงับการใช้งาน' }}</span>
               </button>
            </div>
         </div>
 
-        <div class="mt-8 pt-6 border-t border-slate-50 flex items-center justify-end gap-2">
+        <div v-if="isAdmin" class="mt-8 pt-6 border-t border-slate-50 flex items-center justify-end gap-2">
            <button @click="openEditModal(staff)" class="p-3 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all">
              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2.25 2.25 0 113.182 3.182L12.75 20.25 7.5 21.75l1.5-5.25L18.586 2.586z" /></svg>
            </button>
@@ -144,19 +163,36 @@ const formatDate = (dateStr: string) => {
              </div>
              <div>
                <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">บทบาท (Role)</label>
-               <div class="grid grid-cols-2 gap-3">
+               <div class="grid grid-cols-3 gap-3">
                   <button type="button" @click="form.role = 'Admin'" 
-                    class="py-3 rounded-xl border-2 font-bold text-xs transition-all"
-                    :class="form.role === 'Admin' ? 'border-indigo-600 bg-indigo-50 text-indigo-600' : 'border-slate-50 text-slate-400'">ผู้ดูแลระบบ</button>
+                    class="py-3 rounded-xl border-2 font-bold text-[10px] transition-all"
+                    :class="form.role === 'Admin' ? 'border-indigo-600 bg-indigo-50 text-indigo-600' : 'border-slate-50 text-slate-400'">Admin</button>
+                  <button type="button" @click="form.role = 'Manager'" 
+                    class="py-3 rounded-xl border-2 font-bold text-[10px] transition-all"
+                    :class="form.role === 'Manager' ? 'border-indigo-600 bg-indigo-50 text-indigo-600' : 'border-slate-50 text-slate-400'">Manager</button>
                   <button type="button" @click="form.role = 'Cashier'" 
+                    class="py-3 rounded-xl border-2 font-bold text-[10px] transition-all"
+                    :class="form.role === 'Cashier' ? 'border-indigo-600 bg-indigo-50 text-indigo-600' : 'border-slate-50 text-slate-400'">Cashier</button>
+               </div>
+             </div>
+             <div>
+               <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">สถานะ (Status)</label>
+               <div class="grid grid-cols-2 gap-3">
+                  <button type="button" @click="form.status = 'Active'" 
                     class="py-3 rounded-xl border-2 font-bold text-xs transition-all"
-                    :class="form.role === 'Cashier' ? 'border-indigo-600 bg-indigo-50 text-indigo-600' : 'border-slate-50 text-slate-400'">พนักงานขาย</button>
+                    :class="form.status === 'Active' ? 'border-emerald-600 bg-emerald-50 text-emerald-600' : 'border-slate-50 text-slate-400'">Active</button>
+                  <button type="button" @click="form.status = 'Inactive'" 
+                    class="py-3 rounded-xl border-2 font-bold text-xs transition-all"
+                    :class="form.status === 'Inactive' ? 'border-rose-600 bg-rose-50 text-rose-600' : 'border-slate-50 text-slate-400'">Inactive</button>
                </div>
              </div>
           </div>
           <div class="pt-4 grid grid-cols-2 gap-3">
             <button type="button" @click="isModalOpen = false" class="py-4 bg-slate-50 text-slate-600 rounded-2xl font-bold hover:bg-slate-100 transition-all">ยกเลิก</button>
-            <button type="submit" class="py-4 bg-indigo-600 text-white rounded-2xl font-black shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all">บันทึกข้อมูล</button>
+            <button type="submit" :disabled="isSaving" class="py-4 bg-indigo-600 text-white rounded-2xl font-black shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all flex items-center justify-center gap-2">
+               <span v-if="isSaving" class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+               {{ isSaving ? 'กำลังบันทึก...' : 'บันทึกข้อมูล' }}
+            </button>
           </div>
         </form>
       </div>

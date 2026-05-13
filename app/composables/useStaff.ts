@@ -1,7 +1,8 @@
 import { ref, onMounted } from 'vue'
 
 export type Staff = {
-  id: number
+  id: number | string
+  _id?: number | string
   name: string
   role: string
   username: string
@@ -21,12 +22,16 @@ export const useStaff = () => {
     if (!token.value) return
     isLoading.value = true
     try {
-      const response = await $fetch<any>(`${apiUrl}/staff`, {
+      const response = await $fetch<any>(`${apiUrl}/users`, {
         headers: {
           Authorization: `Bearer ${token.value}`
         }
       })
-      staffMembers.value = response.data || response
+      const data = response.data || response
+      staffMembers.value = Array.isArray(data) ? data.map((s: any) => ({
+        ...s,
+        id: s.id || s._id || ''
+      })) : []
     } catch (error) {
       console.error('Error fetching staff:', error)
     } finally {
@@ -35,23 +40,43 @@ export const useStaff = () => {
   }
 
   const addStaff = async (newStaff: any) => {
+    isLoading.value = true
+    console.log('DEBUG: Adding new staff with payload:', JSON.parse(JSON.stringify(newStaff)))
     try {
-      await $fetch(`${apiUrl}/staff`, {
+      const response = await $fetch(`${apiUrl}/user`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token.value}`
         },
         body: newStaff
       })
+      console.log('DEBUG: Add staff response:', response)
       await fetchStaff()
       return { success: true }
     } catch (error: any) {
-      console.error('Error adding staff:', error)
-      return { success: false, error: error.data?.message || 'ไม่สามารถเพิ่มข้อมูลพนักงานได้' }
+      console.error('DEBUG: Error adding staff:', error)
+      console.error('DEBUG: Error Data:', error.data)
+      
+      let errorMsg = 'ไม่สามารถเพิ่มข้อมูลพนักงานได้'
+      if (error.data?.message) {
+        errorMsg = error.data.message
+      } else if (error.status === 401) {
+        errorMsg = 'เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่'
+      } else if (error.status === 403) {
+        errorMsg = 'คุณไม่มีสิทธิ์ในการจัดการพนักงาน (เฉพาะ Admin เท่านั้น)'
+      } else if (error.status === 404) {
+        errorMsg = 'ไม่พบ Endpoint สำหรับสร้างพนักงาน (404)'
+      } else {
+        errorMsg += ` (${error.status || 'Unknown Error'})`
+      }
+
+      return { success: false, error: errorMsg }
+    } finally {
+      isLoading.value = false
     }
   }
 
-  const updateStaff = async (id: number, updatedStaff: any) => {
+  const updateStaff = async (id: number | string, updatedStaff: any) => {
     try {
       await $fetch(`${apiUrl}/staff/${id}`, {
         method: 'PUT',
@@ -68,7 +93,7 @@ export const useStaff = () => {
     }
   }
 
-  const deleteStaff = async (id: number) => {
+  const deleteStaff = async (id: number | string) => {
     try {
       await $fetch(`${apiUrl}/staff/${id}`, {
         method: 'DELETE',
