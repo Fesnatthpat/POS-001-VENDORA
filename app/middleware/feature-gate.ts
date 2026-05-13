@@ -1,6 +1,9 @@
 export default defineNuxtRouteMiddleware(async (to, from) => {
   const { isAdmin, initAuth } = useAuth()
   
+  // Skip on server-side as user profile is in localStorage
+  if (process.server) return
+
   // Ensure auth state is initialized (important for refreshes)
   await initAuth()
 
