@@ -109,6 +109,25 @@ export const useStaff = () => {
     }
   }
 
+  const changePassword = async (id: number | string, password: string) => {
+    try {
+      const response = await $fetch(`/api/change-password/${id}`, {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${token.value}`
+        },
+        body: { password }
+      })
+      return { success: true, message: 'เปลี่ยนรหัสผ่านสำเร็จ' }
+    } catch (error: any) {
+      console.error('Error changing password:', error)
+      return { 
+        success: false, 
+        error: error.data?.statusMessage || error.data?.message || 'ไม่สามารถเปลี่ยนรหัสผ่านได้' 
+      }
+    }
+  }
+
   onMounted(() => {
     fetchStaff()
   })
@@ -119,6 +138,7 @@ export const useStaff = () => {
     fetchStaff,
     addStaff,
     updateStaff,
-    deleteStaff
+    deleteStaff,
+    changePassword
   }
 }

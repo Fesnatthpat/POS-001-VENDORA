@@ -2,7 +2,7 @@
 import { useStaff, type Staff } from '~/composables/useStaff'
 import { useAuth } from '~/composables/useAuth'
 
-const { staffMembers, addStaff, updateStaff, deleteStaff } = useStaff()
+const { staffMembers, addStaff, updateStaff, deleteStaff, changePassword } = useStaff()
 const { isAdmin } = useAuth()
 
 definePageMeta({
@@ -35,7 +35,7 @@ const openAddModal = () => {
 const openEditModal = (staff: Staff) => {
   isEditing.value = true
   editingId.value = staff.id
-  form.value = { ...staff }
+  form.value = { ...staff, password: '' }
   isModalOpen.value = true
 }
 
@@ -45,10 +45,31 @@ const saveStaffMember = async () => {
     return
   }
 
+  // Validate password length if provided
+  if (form.value.password && form.value.password.length < 6) {
+    alert('รหัสผ่านต้องมีความยาวอย่างน้อย 6 ตัวอักษร')
+    return
+  }
+
   isSaving.value = true
-  let res
+  let res: any = { success: true }
+  
   if (isEditing.value && editingId.value) {
-    res = await updateStaff(editingId.value, form.value)
+    // 1. Update general info
+    res = await updateStaff(editingId.value, {
+      name: form.value.name,
+      username: form.value.username,
+      role: form.value.role,
+      status: form.value.status
+    })
+    
+    // 2. If general info update was successful and password was provided, update password
+    if (res.success && form.value.password) {
+      const pwdRes = await changePassword(editingId.value, form.value.password)
+      if (!pwdRes.success) {
+        alert('แก้ไขข้อมูลสำเร็จ แต่ไม่สามารถเปลี่ยนรหัสผ่านได้: ' + pwdRes.error)
+      }
+    }
   } else {
     res = await addStaff(form.value)
   }
