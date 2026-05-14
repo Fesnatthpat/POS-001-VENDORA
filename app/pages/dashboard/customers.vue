@@ -74,15 +74,27 @@ const openHistoryModal = (customer: any) => {
 }
 
 const saveCustomer = async () => {
+  if (isSaving.value) return
   isSaving.value = true
   let res
-  if (isEditing.value && editingId.value) {
-    res = await updateCustomer(editingId.value, form.value)
-  } else {
-    res = await addCustomer(form.value)
+  try {
+    if (isEditing.value && editingId.value) {
+      res = await updateCustomer(editingId.value, form.value)
+    } else {
+      res = await addCustomer(form.value)
+    }
+    
+    if (res.success) {
+      isModalOpen.value = false
+    } else {
+      alert(res.error || 'เกิดข้อผิดพลาดในการบันทึกข้อมูล')
+    }
+  } catch (err: any) {
+    console.error('Save customer error:', err)
+    alert('เกิดข้อผิดพลาดในการเชื่อมต่อระบบ')
+  } finally {
+    isSaving.value = false
   }
-  isSaving.value = false
-  if (res.success) isModalOpen.value = false
 }
 
 const handleAdjustPoints = async () => {
@@ -299,7 +311,10 @@ const formatDateTime = (dateStr: string) => {
           </div>
           <div class="pt-4 grid grid-cols-2 gap-3">
             <button type="button" @click="isModalOpen = false" class="py-4 bg-slate-50 text-slate-600 rounded-2xl font-bold hover:bg-slate-100 transition-all">ยกเลิก</button>
-            <button type="submit" class="py-4 bg-indigo-600 text-white rounded-2xl font-bold shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all">บันทึกข้อมูล</button>
+            <button type="submit" :disabled="isSaving" class="py-4 bg-indigo-600 text-white rounded-2xl font-bold shadow-lg shadow-indigo-100 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2">
+              <span v-if="isSaving" class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+              {{ isSaving ? 'กำลังบันทึก...' : 'บันทึกข้อมูล' }}
+            </button>
           </div>
         </form>
       </div>

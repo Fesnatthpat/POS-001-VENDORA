@@ -914,7 +914,7 @@ const getImageUrl = (path: string | File | null) => {
     </div>
 
     <!-- Debug Info -->
-    <div v-if="features.debugMode"
+    <!-- <div v-if="features.debugMode"
       class="fixed bottom-4 left-4 z-[200] bg-slate-900 text-white p-4 rounded-2xl text-[10px] font-mono opacity-80 hover:opacity-100 transition-opacity max-w-xs shadow-2xl">
       <p class="font-bold border-b border-white/20 pb-1 mb-1 text-indigo-400">DEBUG MODE ENABLED</p>
       <div class="space-y-1 mt-2">
@@ -925,7 +925,7 @@ const getImageUrl = (path: string | File | null) => {
         <p><span class="text-slate-400">Payment:</span> {{ paymentMethod }}</p>
         <p class="pt-1 border-t border-white/10 mt-1"><span class="text-indigo-400">ENV:</span> {{ envName }}</p>
       </div>
-    </div>
+    </div> -->
   </div>
 </template>
 

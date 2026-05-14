@@ -44,7 +44,7 @@ export const useCustomers = () => {
 
   const addCustomer = async (customer: Partial<Customer>) => {
     try {
-      await $fetch(`${apiUrl}/customers`, {
+      await $fetch(`${apiUrl}/customer`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token.value}`
@@ -58,10 +58,10 @@ export const useCustomers = () => {
       return { success: false, error: error.data?.message || 'ไม่สามารถเพิ่มข้อมูลลูกค้าได้' }
     }
   }
-
+ 
   const updateCustomer = async (id: number | string, customer: Partial<Customer>) => {
     try {
-      await $fetch(`${apiUrl}/customers/${id}`, {
+      await $fetch(`${apiUrl}/customer/${id}`, {
         method: 'PUT',
         headers: {
           Authorization: `Bearer ${token.value}`
@@ -75,10 +75,10 @@ export const useCustomers = () => {
       return { success: false, error: error.data?.message || 'ไม่สามารถอัปเดตข้อมูลลูกค้าได้' }
     }
   }
-
+ 
   const deleteCustomer = async (id: number | string) => {
     try {
-      await $fetch(`${apiUrl}/customers/${id}`, {
+      await $fetch(`${apiUrl}/customer/${id}`, {
         method: 'DELETE',
         headers: {
           Authorization: `Bearer ${token.value}`
