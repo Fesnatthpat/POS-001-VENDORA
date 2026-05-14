@@ -48,6 +48,10 @@ const handleSetupStore = async () => {
       }
     }
 
+    // Fetch features for the newly created store
+    const { fetchFeatures } = useFeatures()
+    await fetchFeatures()
+
     // Redirect to dashboard
     await navigateTo('/dashboard', { replace: true })
   } catch (err: any) {

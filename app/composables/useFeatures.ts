@@ -1,6 +1,10 @@
 import { ref, watch, onMounted } from 'vue'
 
 export const useFeatures = () => {
+  const config = useRuntimeConfig()
+  const apiUrl = config.public.vendoraUrlApi
+  const token = useCookie('auth_token')
+
   // Default values
   const defaultFeatures = {
     enablePOS: true,
@@ -32,6 +36,37 @@ export const useFeatures = () => {
     }
   }
 
+  // Helper to fetch from Backend
+  const fetchFeatures = async () => {
+    if (!token.value) return
+
+    try {
+      const response = await $fetch<any>(`${apiUrl}/stores/me`, {
+        headers: {
+          Authorization: `Bearer ${token.value}`
+        }
+      })
+      
+      if (response && response.features) {
+        let backendFeatures = response.features
+        if (typeof backendFeatures === 'string') {
+          try {
+            backendFeatures = JSON.parse(backendFeatures)
+          } catch (e) {
+            console.error('Failed to parse features from API', e)
+            backendFeatures = {}
+          }
+        }
+        
+        // Update features with backend data, falling back to defaults
+        features.value = { ...defaultFeatures, ...backendFeatures }
+        saveFeatures() // Sync to localStorage
+      }
+    } catch (err) {
+      console.error('Error fetching features:', err)
+    }
+  }
+
   // Helper to save to localStorage
   const saveFeatures = () => {
     if (process.client) {
@@ -40,8 +75,11 @@ export const useFeatures = () => {
   }
 
   // Initialize on client-side
-  onMounted(() => {
+  onMounted(async () => {
     loadFeatures()
+    if (token.value) {
+      await fetchFeatures()
+    }
   })
 
   const toggleFeature = (key: string) => {
@@ -63,6 +101,7 @@ export const useFeatures = () => {
 
   return {
     features,
+    fetchFeatures,
     toggleFeature,
     setFeature,
     resetFeatures,

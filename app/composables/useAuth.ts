@@ -56,6 +56,10 @@ export const useAuth = () => {
         if (process.client) {
           localStorage.setItem('user_profile', JSON.stringify(userData))
         }
+
+        // Fetch store features after login
+        const { fetchFeatures } = useFeatures()
+        await fetchFeatures()
         
         return { success: true }
       }
