@@ -8,26 +8,32 @@ export const useAuth = () => {
     path: '/',
     sameSite: 'lax'
   })
-  const user = useState<any>('user', () => null)
+  const userCookie = useCookie<any>('user_profile', {
+    maxAge: 60 * 60 * 24 * 7,
+    path: '/',
+    sameSite: 'lax'
+  })
+  
+  const user = useState<any>('user', () => userCookie.value || null)
 
   const isAuthenticated = computed(() => !!token.value)
-  const isAdmin = computed(() => user.value?.role === 'Admin')
+  const isAdmin = computed(() => user.value?.role === 'Admin' || user.value?.role === 'Dev')
+  const isDev = computed(() => user.value?.role === 'Dev')
+  const isCashier = computed(() => user.value?.role === 'Cashier')
 
   const initAuth = async () => {
-    // 1. Try to restore user from localStorage if we have a token
+    // 1. Try to restore user from localStorage if we have a token (fallback)
     if (token.value && !user.value && process.client) {
       const savedUser = localStorage.getItem('user_profile')
       if (savedUser) {
         try {
           user.value = JSON.parse(savedUser)
+          userCookie.value = user.value // Sync to cookie
         } catch (e) {
           console.error('Failed to parse saved user:', e)
         }
       }
     }
-
-    // 2. Note: Profile API is currently unavailable (404), 
-    // so we rely on localStorage for state persistence across refreshes.
     return user.value
   }
 
@@ -44,6 +50,7 @@ export const useAuth = () => {
       if (authToken) {
         token.value = authToken
         user.value = userData
+        userCookie.value = userData
         
         // Persist user profile to localStorage
         if (process.client) {
@@ -75,6 +82,7 @@ export const useAuth = () => {
       if (authToken || userResult) {
         if (authToken) token.value = authToken
         user.value = userResult
+        userCookie.value = userResult
         
         if (process.client && userResult) {
           localStorage.setItem('user_profile', JSON.stringify(userResult))
@@ -93,6 +101,7 @@ export const useAuth = () => {
   const logout = () => {
     token.value = null
     user.value = null
+    userCookie.value = null
     if (process.client) {
       localStorage.removeItem('user_profile')
     }
@@ -101,8 +110,11 @@ export const useAuth = () => {
 
   return {
     user,
+    token,
     isAuthenticated,
     isAdmin,
+    isDev,
+    isCashier,
     initAuth,
     login,
     register,

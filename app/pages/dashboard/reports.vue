@@ -27,6 +27,13 @@ definePageMeta({
 })
 // --- State ---
 const selectedDate = ref<string>(new Date().toISOString().split('T')[0] as string)
+const selectedShift = ref<'all' | 'morning' | 'evening'>('all')
+
+const shifts = [
+  { id: 'all', name: 'ทั้งหมด', icon: '🕒' },
+  { id: 'morning', name: 'กะเช้า', icon: '☀️' },
+  { id: 'evening', name: 'กะเย็น', icon: '🌙' }
+]
 
 // --- Computed ---
 const targetDateObj = computed(() => new Date(selectedDate.value).toDateString())
@@ -34,10 +41,24 @@ const targetDateObj = computed(() => new Date(selectedDate.value).toDateString()
 const formattedTargetDate = computed(() => new Date(selectedDate.value).toLocaleDateString('th-TH'))
 
 const dayOrdersAll = computed(() => orders.value.filter(o => new Date(o.timestamp).toDateString() === targetDateObj.value))
-// ... (rest of computed properties)
 
-const dayOrdersValid = computed(() => dayOrdersAll.value.filter(o => o.status !== 'voided'))
-const dayOrdersVoided = computed(() => dayOrdersAll.value.filter(o => o.status === 'voided'))
+const dayOrdersFiltered = computed(() => {
+  if (selectedShift.value === 'all') return dayOrdersAll.value
+  
+  return dayOrdersAll.value.filter(o => {
+    const hour = new Date(o.timestamp).getHours()
+    if (selectedShift.value === 'morning') {
+      // กะเช้า: 06:00 - 15:59
+      return hour >= 6 && hour < 16
+    } else {
+      // กะเย็น: 16:00 - 05:59 (ในที่นี้คือช่วงที่เหลือของวัน)
+      return hour >= 16 || hour < 6
+    }
+  })
+})
+
+const dayOrdersValid = computed(() => dayOrdersFiltered.value.filter(o => o.status !== 'voided'))
+const dayOrdersVoided = computed(() => dayOrdersFiltered.value.filter(o => o.status === 'voided'))
 
 const dailyStats = computed(() => {
   const revenue = dayOrdersValid.value.reduce((sum, o) => sum + o.total, 0)
@@ -79,13 +100,13 @@ const formatDate = (dateStr: string) => {
 }
 
 const exportToExcel = () => {
-  if (dayOrdersAll.value.length === 0) {
-    alert('ไม่มีข้อมูลสำหรับวันที่เลือก')
+  if (dayOrdersFiltered.value.length === 0) {
+    alert('ไม่มีข้อมูลสำหรับกะที่เลือก')
     return
   }
 
   const headers = [ 'Order ID', 'Time', 'Customer ID', 'Items Count', 'Subtotal', 'Discount', 'Total', 'Total Cost', 'Profit', 'Payment Method', 'Status' ]
-  const rows = dayOrdersAll.value.map(o => [
+  const rows = dayOrdersFiltered.value.map(o => [
     o.id,
     new Date(o.timestamp).toLocaleTimeString(),
     o.customerId || 'General',
@@ -104,7 +125,7 @@ const exportToExcel = () => {
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.setAttribute('href', url)
-  link.setAttribute('download', `sales_report_${selectedDate.value}.csv`)
+  link.setAttribute('download', `sales_report_${selectedDate.value}_${selectedShift.value}.csv`)
   link.style.visibility = 'hidden'
   document.body.appendChild(link)
   link.click()
@@ -259,12 +280,30 @@ const doughnutOptions = {
         <p class="text-slate-500 font-medium text-xs lg:text-sm mt-1">วิเคราะห์ยอดขายและผลการดำเนินงานของร้าน</p>
       </div>
       <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+        <!-- Date Picker -->
         <div
           class="flex items-center gap-3 bg-white p-2 rounded-2xl border border-slate-100 shadow-sm focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-100 transition-all">
           <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-3">เลือกวันที่</span>
           <input type="date" v-model="selectedDate"
             class="bg-slate-50 border-none rounded-xl px-4 py-2.5 font-bold text-slate-900 focus:ring-0 text-sm flex-1 md:flex-none cursor-pointer hover:bg-slate-100 transition-colors outline-none" />
         </div>
+
+        <!-- Shift Selector -->
+        <div class="flex bg-white p-1 rounded-2xl border border-slate-100 shadow-sm">
+          <button 
+            v-for="shift in shifts" 
+            :key="shift.id"
+            @click="selectedShift = shift.id as any"
+            class="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all"
+            :class="selectedShift === shift.id 
+              ? 'bg-indigo-600 text-white shadow-md shadow-indigo-100' 
+              : 'text-slate-400 hover:bg-slate-50 hover:text-slate-600'"
+          >
+            <span>{{ shift.icon }}</span>
+            <span class="hidden md:inline">{{ shift.name }}</span>
+          </button>
+        </div>
+
         <button @click="exportToExcel"
           class="bg-indigo-600 text-white px-6 py-4 rounded-2xl font-bold shadow-lg shadow-indigo-200 hover:bg-indigo-700 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -467,13 +506,13 @@ const doughnutOptions = {
                 </tr>
               </thead>
               <tbody class="divide-y divide-slate-50">
-                <tr v-if="dayOrdersAll.length === 0">
+                <tr v-if="dayOrdersFiltered.length === 0">
                   <td colspan="4" class="px-8 py-16 text-center text-slate-400">
                     <div class="text-4xl mb-4 opacity-50">🧾</div>
                     <p class="font-bold">ไม่พบรายการธุรกรรมในวันที่เลือก</p>
                   </td>
                 </tr>
-                <tr v-for="order in dayOrdersAll.slice().reverse()" :key="order.id"
+                <tr v-for="order in dayOrdersFiltered.slice().reverse()" :key="order.id"
                   class="hover:bg-slate-50/50 transition-colors group">
                   <td class="px-8 py-5">
                     <div class="flex flex-col min-w-0">

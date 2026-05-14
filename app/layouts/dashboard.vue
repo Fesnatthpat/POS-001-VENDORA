@@ -176,7 +176,7 @@ import { useAuth } from '~/composables/useAuth'
 const isMobileMenuOpen = ref(false)
 const route = useRoute()
 const { features } = useFeatures()
-const { user, isAdmin, logout } = useAuth()
+const { user, isAdmin, isDev, logout } = useAuth()
 
 // Dynamic Head Title
 useHead({
@@ -210,10 +210,18 @@ const navLinks = computed(() => {
   ]
 
   return links.filter(link => {
-    // 1. Check Admin Role for Dev Management
-    if (link.to === '/dashboard/dev' && !isAdmin.value) return false
+    // 1. Check Dev Role for Dev Management
+    if (link.to === '/dashboard/dev' && !isDev.value) return false
 
-    // 2. Check Feature Flag
+    // 2. Check Cashier Role Restrictions
+    if (user.value?.role === 'Cashier') {
+      const restrictedForCashier = ['/dashboard/staff', '/dashboard/reports', '/dashboard/settings']
+      if (restrictedForCashier.includes(link.to)) {
+        return false
+      }
+    }
+
+    // 3. Check Feature Flag
     if (link.feature && !(features.value as any)[ link.feature ]) return false
     
     return true

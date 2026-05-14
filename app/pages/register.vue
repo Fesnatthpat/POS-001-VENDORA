@@ -18,7 +18,8 @@ const handleRegister = async () => {
   const result = await register({
     name: name.value,
     username: username.value,
-    password: password.value
+    password: password.value,
+    role: 'Admin'
   })
 
   if (result.success) {
