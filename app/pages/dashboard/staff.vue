@@ -20,7 +20,7 @@ const form = ref<any>({
   name: '',
   username: '',
   password: '',
-  role: 'Cashier',
+  role: 'Admin',
   status: 'Active'
 })
 
@@ -28,7 +28,7 @@ const form = ref<any>({
 const openAddModal = () => {
   isEditing.value = false
   editingId.value = null
-  form.value = { name: '', username: '', password: '', role: 'Cashier', status: 'Active' }
+  form.value = { name: '', username: '', password: '', role: 'Admin', status: 'Active' }
   isModalOpen.value = true
 }
 
