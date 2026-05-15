@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { useProducts } from '~/composables/useProducts'
 import { useSettings } from '~/composables/useSettings'
+import { useToast } from '~/composables/useToast'
 
 const { products, stockIn } = useProducts()
 const { settings } = useSettings()
+const { addToast } = useToast()
 
 definePageMeta({
   layout: 'dashboard',
@@ -43,7 +45,7 @@ onMounted(() => {
 
 const handleStockIn = async () => {
   if (!selectedProductId.value || !supplier.value || quantity.value <= 0) {
-    alert('กรุณากรอกข้อมูลให้ครบถ้วน')
+    addToast('กรุณากรอกข้อมูลให้ครบถ้วน', 'warning')
     return
   }
 
@@ -155,11 +157,11 @@ const formatCurrency = (val: number) => {
                 class="block text-[10px] font-black text-slate-400 uppercase tracking-widest">จำนวนที่รับเข้า</label>
               <div class="flex items-center gap-2 sm:gap-4 bg-slate-50 p-2 rounded-2xl border border-slate-200">
                 <button type="button" @click="quantity = Math.max(1, quantity - 1)"
-                  class="w-10 h-10 sm:w-12 sm:h-12 bg-white rounded-xl shadow-sm flex items-center justify-center font-black hover:bg-slate-100 active:scale-95 transition-all">-</button>
+                  class="w-10 h-10 sm:w-12 sm:h-12 flex-shrink-0 bg-white rounded-xl shadow-sm flex items-center justify-center font-black hover:bg-slate-100 active:scale-95 transition-all">-</button>
                 <input type="number" v-model="quantity" required min="1"
                   class="flex-1 bg-transparent text-center font-black text-lg sm:text-xl outline-none min-w-0" />
                 <button type="button" @click="quantity++"
-                  class="w-10 h-10 sm:w-12 sm:h-12 bg-white rounded-xl shadow-sm flex items-center justify-center font-black hover:bg-slate-100 active:scale-95 transition-all">+</button>
+                  class="w-10 h-10 sm:w-12 sm:h-12 flex-shrink-0 bg-white rounded-xl shadow-sm flex items-center justify-center font-black hover:bg-slate-100 active:scale-95 transition-all">+</button>
               </div>
             </div>
 

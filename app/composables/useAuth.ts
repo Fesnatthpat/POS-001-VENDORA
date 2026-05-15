@@ -17,7 +17,7 @@ export const useAuth = () => {
   const user = useState<any>('user', () => userCookie.value || null)
 
   const isAuthenticated = computed(() => !!token.value)
-  const isAdmin = computed(() => user.value?.role === 'Admin' || user.value?.role === 'Dev')
+  const isAdmin = computed(() => user.value?.role === 'Admin')
   const isDev = computed(() => user.value?.role === 'Dev')
   const isCashier = computed(() => user.value?.role === 'Cashier')
 

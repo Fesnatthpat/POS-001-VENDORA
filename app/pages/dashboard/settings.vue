@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { useSettings, type StoreSettings } from '~/composables/useSettings'
+import { useToast } from '~/composables/useToast'
 import { ref, watch } from 'vue'
 
 const { settings, saveSettings, exportBackup, importBackup } = useSettings()
+const { addToast } = useToast()
 
 definePageMeta({
   layout: 'dashboard',
@@ -31,9 +33,9 @@ const handleSave = async () => {
   isSaving.value = false
   
   if (result.success) {
-    alert('บันทึกการตั้งค่าสำเร็จ')
+    addToast('บันทึกการตั้งค่าสำเร็จ', 'success')
   } else {
-    alert('เกิดข้อผิดพลาด: ' + result.error)
+    addToast('เกิดข้อผิดพลาด: ' + result.error, 'error')
   }
 }
 
@@ -49,7 +51,7 @@ const handleImport = (event: any) => {
       const content = e.target?.result as string
       if (confirm('การคืนค่าข้อมูลจะทับข้อมูลปัจจุบันทั้งหมดและเริ่มระบบใหม่ คุณแน่ใจใช่หรือไม่?')) {
         const success = importBackup(content)
-        if (!success) alert('เกิดข้อผิดพลาด: ไฟล์สำรองข้อมูลไม่ถูกต้อง')
+        if (!success) addToast('เกิดข้อผิดพลาด: ไฟล์สำรองข้อมูลไม่ถูกต้อง', 'error')
       }
     }
     reader.readAsText(file)

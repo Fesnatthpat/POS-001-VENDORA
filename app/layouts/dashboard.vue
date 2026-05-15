@@ -197,7 +197,7 @@ const IconDev = () => h('svg', { xmlns: 'http://www.w3.org/2000/svg', fill: 'non
 
 const navLinks = computed(() => {
   const links = [
-    { to: '/dashboard', label: 'ภาพรวม', icon: IconOverview },
+    { to: isDev.value ? '/dashboard/dev' : '/dashboard', label: isDev.value ? 'Global Overview' : 'ภาพรวม', icon: IconOverview },
     { to: '/dashboard/pos', label: 'ระบบขายหน้าร้าน', icon: IconPOS, feature: 'enablePOS' },
     { to: '/dashboard/orders', label: 'ประวัติคำสั่งซื้อ', icon: IconOrders, feature: 'enableOrders' },
     { to: '/dashboard/products', label: 'คลังสินค้า', icon: IconInventory, feature: 'enableProducts' },
@@ -210,10 +210,15 @@ const navLinks = computed(() => {
   ]
 
   return links.filter(link => {
-    // 1. Check Dev Role for Dev Management
+    // 1. Dev Role: Only see Global Overview and Dev Management
+    if (isDev.value) {
+      return ['/dashboard/dev', '/dashboard'].includes(link.to)
+    }
+
+    // 2. Hide Dev Management for non-Devs
     if (link.to === '/dashboard/dev' && !isDev.value) return false
 
-    // 2. Check Cashier Role Restrictions
+    // 3. Check Cashier Role Restrictions
     if (user.value?.role === 'Cashier') {
       const restrictedForCashier = ['/dashboard/staff', '/dashboard/reports', '/dashboard/settings']
       if (restrictedForCashier.includes(link.to)) {
@@ -221,7 +226,7 @@ const navLinks = computed(() => {
       }
     }
 
-    // 3. Check Feature Flag
+    // 4. Check Feature Flag
     if (link.feature && !(features.value as any)[ link.feature ]) return false
     
     return true

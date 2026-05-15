@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { useProducts, type Product } from '~/composables/useProducts'
 import { useSettings } from '~/composables/useSettings'
+import { useToast } from '~/composables/useToast'
 import { compressAndUpload } from '~/utils/storage'
 
 const { products, categories, addProduct, updateProduct, deleteProduct, addStock, stockMovements, addCategory, removeCategory, isLoading, stockIn } = useProducts()
 const { settings } = useSettings()
+const { addToast } = useToast()
 
 definePageMeta({
   layout: 'dashboard',
@@ -156,7 +158,7 @@ const saveProduct = async () => {
   if (isSaving.value) return
   
   if (!currentProduct.value.name || currentProduct.value.price <= 0) {
-    alert('กรุณากรอกชื่อสินค้าและราคาให้ถูกต้อง')
+    addToast('กรุณากรอกชื่อสินค้าและราคาให้ถูกต้อง', 'warning')
     return
   }
 
@@ -170,13 +172,13 @@ const saveProduct = async () => {
       if (result.success) {
         isModalOpen.value = false
       } else {
-        alert(result.error || 'เกิดข้อผิดพลาดในการเพิ่มสินค้า')
+        addToast(result.error || 'เกิดข้อผิดพลาดในการเพิ่มสินค้า', 'error')
       }
     }
   } catch (err: any) {
     console.error('Error saving product:', err)
     const errorMsg = err.data?.message || err.message || 'เกิดข้อผิดพลาดในการบันทึกสินค้า'
-    alert(errorMsg)
+    addToast(errorMsg, 'error')
   } finally {
     isSaving.value = false
   }
@@ -214,7 +216,7 @@ const openStockInModal = (productId: number | null = null) => {
 
 const handleStockInSubmit = async () => {
   if (!stockInForm.value.productId || !stockInForm.value.supplier || stockInForm.value.quantity <= 0) {
-    alert('กรุณากรอกข้อมูลให้ครบถ้วน')
+    addToast('กรุณากรอกข้อมูลให้ครบถ้วน', 'warning')
     return
   }
 
@@ -230,7 +232,7 @@ const handleStockInSubmit = async () => {
     isStockInModalOpen.value = false
   } catch (err) {
     console.error(err)
-    alert('เกิดข้อผิดพลาดในการบันทึกรับสินค้า')
+    addToast('เกิดข้อผิดพลาดในการบันทึกรับสินค้า', 'error')
   } finally {
     isSubmittingStockIn.value = false
   }
@@ -612,13 +614,13 @@ const getImageUrl = (path: string) => {
 
                 <div class="space-y-3">
                   <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest">จำนวนที่รับเข้า</label>
-                  <div class="flex items-center gap-4 bg-slate-50 p-2 rounded-2xl border border-slate-200">
+                  <div class="flex items-center gap-2 bg-slate-50 p-2 rounded-2xl border border-slate-200">
                     <button type="button" @click="stockInForm.quantity = Math.max(1, stockInForm.quantity - 1)" 
-                      class="w-12 h-12 bg-white rounded-xl shadow-sm flex items-center justify-center font-black hover:bg-slate-100 transition-all">-</button>
+                      class="w-12 h-12 flex-shrink-0 bg-white rounded-xl shadow-sm flex items-center justify-center font-black hover:bg-slate-100 transition-all">-</button>
                     <input type="number" v-model="stockInForm.quantity" required min="1"
-                      class="flex-1 bg-transparent text-center font-black text-xl outline-none" />
+                      class="flex-1 min-w-0 bg-transparent text-center font-black text-xl outline-none" />
                     <button type="button" @click="stockInForm.quantity++" 
-                      class="w-12 h-12 bg-white rounded-xl shadow-sm flex items-center justify-center font-black hover:bg-slate-100 transition-all">+</button>
+                      class="w-12 h-12 flex-shrink-0 bg-white rounded-xl shadow-sm flex items-center justify-center font-black hover:bg-slate-100 transition-all">+</button>
                   </div>
                 </div>
 

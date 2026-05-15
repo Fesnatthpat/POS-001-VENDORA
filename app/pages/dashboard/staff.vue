@@ -4,6 +4,7 @@ import { useAuth } from '~/composables/useAuth'
 
 const { staffMembers, addStaff, updateStaff, deleteStaff, changePassword } = useStaff()
 const { isAdmin } = useAuth()
+const { addToast } = useToast()
 
 definePageMeta({
   layout: 'dashboard',
@@ -41,13 +42,13 @@ const openEditModal = (staff: Staff) => {
 
 const saveStaffMember = async () => {
   if (!form.value.name || !form.value.username || (!isEditing.value && !form.value.password)) {
-    alert('กรุณากรอกข้อมูลให้ครบถ้วน')
+    addToast('กรุณากรอกข้อมูลให้ครบถ้วน', 'warning')
     return
   }
 
   // Validate password length if provided
   if (form.value.password && form.value.password.length < 6) {
-    alert('รหัสผ่านต้องมีความยาวอย่างน้อย 6 ตัวอักษร')
+    addToast('รหัสผ่านต้องมีความยาวอย่างน้อย 6 ตัวอักษร', 'warning')
     return
   }
 
@@ -67,7 +68,7 @@ const saveStaffMember = async () => {
     if (res.success && form.value.password) {
       const pwdRes = await changePassword(editingId.value, form.value.password)
       if (!pwdRes.success) {
-        alert('แก้ไขข้อมูลสำเร็จ แต่ไม่สามารถเปลี่ยนรหัสผ่านได้: ' + pwdRes.error)
+        addToast('แก้ไขข้อมูลสำเร็จ แต่ไม่สามารถเปลี่ยนรหัสผ่านได้: ' + pwdRes.error, 'warning')
       }
     }
   } else {
@@ -78,9 +79,9 @@ const saveStaffMember = async () => {
   
   if (res.success) {
     isModalOpen.value = false
-    alert(isEditing.value ? 'อัปเดตข้อมูลพนักงานสำเร็จ' : 'เพิ่มพนักงานใหม่สำเร็จ')
+    addToast(isEditing.value ? 'อัปเดตข้อมูลพนักงานสำเร็จ' : 'เพิ่มพนักงานใหม่สำเร็จ', 'success')
   } else {
-    alert(res.error)
+    addToast(res.error, 'error')
   }
 }
 

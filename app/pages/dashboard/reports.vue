@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useOrders } from '~/composables/useOrders'
 import { useSettings } from '~/composables/useSettings'
+import { useToast } from '~/composables/useToast'
 import { Bar, Line, Doughnut } from 'vue-chartjs'
 import {
   Chart as ChartJS,
@@ -20,6 +21,7 @@ ChartJS.register(Title, Tooltip, Legend, BarElement, CategoryScale, LinearScale,
 
 const { orders } = useOrders()
 const { settings } = useSettings()
+const { addToast } = useToast()
 
 definePageMeta({
   layout: 'dashboard',
@@ -101,7 +103,7 @@ const formatDate = (dateStr: string) => {
 
 const exportToExcel = () => {
   if (dayOrdersFiltered.value.length === 0) {
-    alert('ไม่มีข้อมูลสำหรับกะที่เลือก')
+    addToast('ไม่มีข้อมูลสำหรับกะที่เลือก', 'warning')
     return
   }
 

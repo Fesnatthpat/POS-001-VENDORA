@@ -4,12 +4,14 @@ import { useProducts } from '~/composables/useProducts'
 import { useOrders } from '~/composables/useOrders'
 import { useSettings } from '~/composables/useSettings'
 import { useFeatures } from '~/composables/useFeatures'
+import { useToast } from '~/composables/useToast'
 
 const { customers, redeemReward } = useCustomers()
 const { products, fetchProducts, categories } = useProducts()
 const { addOrder, holdBill, heldBills, resumeBill, deleteHeldBill } = useOrders()
 const { settings } = useSettings()
 const { features } = useFeatures()
+const { addToast } = useToast()
 
 definePageMeta({
   layout: 'dashboard',
@@ -129,14 +131,14 @@ const handleBarcodeScan = () => {
       addToCart(product, 1)
       barcodeInput.value = ''
     } else {
-      alert('สินค้าหมด!')
+      addToast('สินค้าหมด!', 'error')
     }
   }
 }
 
 const openProductModal = (product: any) => {
   if (product.stock <= 0) {
-    alert('สินค้าหมด!')
+    addToast('สินค้าหมด!', 'error')
     return
   }
   selectedProduct.value = product
@@ -151,7 +153,7 @@ const addToCart = (product: any, quantity: number) => {
     if (totalQty <= product.stock) {
       existingItem.quantity = totalQty
     } else {
-      alert(`มีสินค้าในคลังเหลือเพียง ${product.stock} ชิ้น`)
+      addToast(`มีสินค้าในคลังเหลือเพียง ${product.stock} ชิ้น`, 'warning')
     }
   } else {
     cart.value.push({
@@ -220,12 +222,12 @@ const openCheckout = () => {
 // ฟังก์ชัน Checkout ที่แก้ไขดัก Error แล้ว
 const completeCheckout = async () => {
   if (paymentMethod.value === 'cash' && (amountReceived.value || 0) < cartTotal.value) {
-    alert('จำนวนเงินที่ได้รับน้อยกว่ายอดรวม!')
+    addToast('จำนวนเงินที่ได้รับน้อยกว่ายอดรวม!', 'error')
     return
   }
 
   if ((paymentMethod.value === 'qr' || paymentMethod.value === 'transfer') && !paymentSlip.value) {
-    alert('กรุณาถ่ายภาพหรืออัปโหลดสลิปการชำระเงิน!')
+    addToast('กรุณาถ่ายภาพหรืออัปโหลดสลิปการชำระเงิน!', 'error')
     return
   }
 
@@ -286,7 +288,7 @@ const completeCheckout = async () => {
 
   } catch (error: any) {
     console.error("Checkout Error: ", error)
-    alert('เกิดข้อผิดพลาดระหว่างชำระเงิน: ' + (error.message || error))
+    addToast('เกิดข้อผิดพลาดระหว่างชำระเงิน: ' + (error.message || error), 'error')
   }
 }
 
@@ -297,16 +299,16 @@ const handleRedeem = async () => {
 
   const threshold = settings.value.loyaltyPointThreshold || 10
   if (customer.points < threshold) {
-    alert(`แต้มไม่พอ! ต้องมีอย่างน้อย ${threshold} แต้ม`)
+    addToast(`แต้มไม่พอ! ต้องมีอย่างน้อย ${threshold} แต้ม`, 'error')
     return
   }
 
   if (confirm(`ยืนยันการแลกรางวัลสำหรับคุณ ${customer.name}? (หัก ${threshold} แต้ม)`)) {
     const res = await redeemReward(customer.id, threshold, `แลกรางวัลหน้าร้าน (หัก ${threshold} แต้ม)`)
     if (res.success) {
-      alert('แลกรางวัลสำเร็จ!')
+      addToast('แลกรางวัลสำเร็จ!', 'success')
     } else {
-      alert(res.error)
+      addToast(res.error, 'error')
     }
   }
 }
@@ -780,10 +782,10 @@ const getImageUrl = (path: string | File | null) => {
             </div>
             <div class="flex items-center justify-center gap-6 bg-slate-50 rounded-[2rem] p-4 border border-slate-100">
               <button @click="selectedQuantity = Math.max(1, selectedQuantity - 1)"
-                class="w-16 h-16 flex items-center justify-center bg-white rounded-2xl shadow-sm border border-slate-200 text-2xl font-black hover:bg-slate-50 transition-all">-</button>
+                class="w-16 h-16 flex-shrink-0 flex items-center justify-center bg-white rounded-2xl shadow-sm border border-slate-200 text-2xl font-black hover:bg-slate-50 transition-all">-</button>
               <span class="text-4xl font-black w-20 text-center text-slate-900">{{ selectedQuantity }}</span>
               <button @click="selectedQuantity = Math.min(selectedProduct?.stock || 1, selectedQuantity + 1)"
-                class="w-16 h-16 flex items-center justify-center bg-white rounded-2xl shadow-sm border border-slate-200 text-2xl font-black hover:bg-slate-50 transition-all">+</button>
+                class="w-16 h-16 flex-shrink-0 flex items-center justify-center bg-white rounded-2xl shadow-sm border border-slate-200 text-2xl font-black hover:bg-slate-50 transition-all">+</button>
             </div>
           </div>
         </div>

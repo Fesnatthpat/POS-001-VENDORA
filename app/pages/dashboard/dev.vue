@@ -245,6 +245,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { useAuth } from '~/composables/useAuth'
 import { useFeatures } from '~/composables/useFeatures'
+import { useToast } from '~/composables/useToast'
 
 definePageMeta({
   layout: 'dashboard',
@@ -255,6 +256,7 @@ useHead({ title: 'Dev Management & Control' })
 
 const mainTab = ref('global')
 const { features, setFeature, resetFeatures } = useFeatures()
+const { addToast } = useToast()
 const { token, logout } = useAuth()
 const config = useRuntimeConfig()
 const apiUrl = config.public.vendoraUrlApi
@@ -359,7 +361,7 @@ const deleteUser = async (userId: number, userName: string) => {
       else if (s.staff) s.staff = s.staff.filter((u: any) => u.id !== userId)
       else if (s.staffs) s.staffs = s.staffs.filter((u: any) => u.id !== userId)
     }
-  } catch (error) { alert('ลบไม่ได้') }
+  } catch (error) { addToast('ลบไม่ได้', 'error') }
 }
 
 const updateStoreStatus = async (status: string) => {
@@ -368,7 +370,7 @@ const updateStoreStatus = async (status: string) => {
     selectedStore.value.status = status
     const s = stores.value.find(s => s.id === selectedStore.value.id)
     if (s) s.status = status
-  } catch (error) { alert('อัปเดตไม่ได้') }
+  } catch (error) { addToast('อัปเดตไม่ได้', 'error') }
 }
 
 const formatKey = (key: string) => key.replace(/([A-Z])/g, ' $1').replace(/^enable /, '').trim()

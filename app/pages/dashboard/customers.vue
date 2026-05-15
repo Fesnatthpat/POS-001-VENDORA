@@ -2,10 +2,12 @@
 import { useCustomers } from '~/composables/useCustomers'
 import { useOrders } from '~/composables/useOrders'
 import { useSettings } from '~/composables/useSettings'
+import { useToast } from '~/composables/useToast'
 
 const { customers, addCustomer, updateCustomer, deleteCustomer, redeemReward, adjustPoints } = useCustomers()
 const { orders } = useOrders()
 const { settings } = useSettings()
+const { addToast } = useToast()
 
 definePageMeta({
   layout: 'dashboard',
@@ -87,11 +89,11 @@ const saveCustomer = async () => {
     if (res.success) {
       isModalOpen.value = false
     } else {
-      alert(res.error || 'เกิดข้อผิดพลาดในการบันทึกข้อมูล')
+      addToast(res.error || 'เกิดข้อผิดพลาดในการบันทึกข้อมูล', 'error')
     }
   } catch (err: any) {
     console.error('Save customer error:', err)
-    alert('เกิดข้อผิดพลาดในการเชื่อมต่อระบบ')
+    addToast('เกิดข้อผิดพลาดในการเชื่อมต่อระบบ', 'error')
   } finally {
     isSaving.value = false
   }
@@ -100,7 +102,7 @@ const saveCustomer = async () => {
 const handleAdjustPoints = async () => {
   if (!editingCustomer.value) return
   if (adjustForm.value.amount <= 0) {
-    alert('กรุณาระบุจำนวนแต้มที่ถูกต้อง')
+    addToast('กรุณาระบุจำนวนแต้มที่ถูกต้อง', 'warning')
     return
   }
 
@@ -110,7 +112,7 @@ const handleAdjustPoints = async () => {
   console.log('Adjusting points for:', editingCustomer.value.id, 'Amount:', actualAmount)
 
   if (adjustForm.value.type === 'remove' && editingCustomer.value.points < adjustForm.value.amount) {
-    alert('แต้มสมาชิกไม่พอหัก!')
+    addToast('แต้มสมาชิกไม่พอหัก!', 'error')
     isSaving.value = false
     return
   }
@@ -120,16 +122,16 @@ const handleAdjustPoints = async () => {
   isSaving.value = false
   if (res.success) {
     isAdjustModalOpen.value = false
-    alert('ปรับปรุงแต้มสำเร็จ')
+    addToast('ปรับปรุงแต้มสำเร็จ', 'success')
   } else {
-    alert(res.error)
+    addToast(res.error, 'error')
   }
 }
 
 const handleDelete = async (id: number) => {
   if (confirm('ยืนยันการลบข้อมูลสมาชิก?')) {
     const res = await deleteCustomer(id)
-    if (!res.success) alert(res.error)
+    if (!res.success) addToast(res.error, 'error')
   }
 }
 
@@ -140,9 +142,9 @@ const handleRedeem = async (customer: any) => {
   if (confirm(`ยืนยันการแลกรางวัล? (หัก ${threshold} แต้ม)`)) {
     const res = await redeemReward(customer.id, threshold, `แลกรางวัล (หัก ${threshold} แต้ม)`)
     if (res.success) {
-      alert('แลกรางวัลสำเร็จ')
+      addToast('แลกรางวัลสำเร็จ', 'success')
     } else {
-      alert(res.error)
+      addToast(res.error, 'error')
     }
   }
 }

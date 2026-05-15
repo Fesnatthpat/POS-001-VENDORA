@@ -7,19 +7,24 @@ export default defineNuxtRouteMiddleware(async (to, from) => {
   // Ensure auth state is initialized (important for refreshes)
   await initAuth()
 
-  // Dev-only routes
+  // Dev-only routes & Redirects
+  if (to.path === '/dashboard' && isDev.value) {
+    return navigateTo('/dashboard/dev')
+  }
+
   if (to.path.startsWith('/dashboard/dev')) {
     if (!isDev.value) {
       return navigateTo('/dashboard')
     }
   }
 
-  // Admin-only routes (Dev also passes because isAdmin includes Dev)
+  // Admin-only routes (Dev no longer passes isAdmin as per useAuth change)
   const adminRoutes = ['/dashboard/settings', '/dashboard/staff']
 
   if (adminRoutes.some(path => to.path.startsWith(path))) {
     if (!isAdmin.value) {
-      return navigateTo('/dashboard')
+      // If Dev, they should stay in Dev area, others go to dashboard
+      return navigateTo(isDev.value ? '/dashboard/dev' : '/dashboard')
     }
   }
 })
