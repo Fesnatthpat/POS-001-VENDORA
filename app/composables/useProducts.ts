@@ -135,12 +135,18 @@ export const useProducts = () => {
 
   const stockIn = async (productId: number, quantity: number, supplier: string, cost: number, note: string) => {
     try {
+      const formData = new FormData()
+      formData.append('quantity', quantity.toString())
+      formData.append('supplier', supplier)
+      formData.append('cost', (Math.round(cost * 100) / 100).toString())
+      formData.append('note', note)
+
       await $fetch(`${apiUrl}/product/${productId}/stock-in`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token.value}`
         },
-        body: { quantity, supplier, cost, note }
+        body: formData
       })
       await fetchProducts(true)
       // Note: Backend does not support fetching stock movements yet
@@ -153,12 +159,16 @@ export const useProducts = () => {
 
   const addStock = async (productId: number, quantity: number, note: string) => {
     try {
+      const formData = new FormData()
+      formData.append('quantity', quantity.toString())
+      formData.append('note', note)
+
       await $fetch(`${apiUrl}/product/${productId}/stock`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token.value}`
         },
-        body: { quantity, note }
+        body: formData
       })
       await fetchProducts(true)
       // Note: Backend does not support fetching stock movements yet

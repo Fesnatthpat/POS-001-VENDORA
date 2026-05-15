@@ -198,8 +198,12 @@ const openStockModal = (product: Product) => {
 
 const handleStockAdjustment = async () => {
   if (stockProductId.value && stockAdjustment.value !== 0) {
-    await addStock(stockProductId.value, stockAdjustment.value, 'ปรับปรุงสต็อก (แผงควบคุม)')
-    isStockModalOpen.value = false
+    const result = await addStock(stockProductId.value, stockAdjustment.value, 'ปรับปรุงสต็อก (แผงควบคุม)')
+    if (result.success) {
+      isStockModalOpen.value = false
+    } else {
+      addToast(result.error || 'เกิดข้อผิดพลาดในการปรับสต็อก', 'error')
+    }
   }
 }
 
@@ -222,14 +226,18 @@ const handleStockInSubmit = async () => {
 
   isSubmittingStockIn.value = true
   try {
-    await stockIn(
+    const result = await stockIn(
       stockInForm.value.productId,
       stockInForm.value.quantity,
       stockInForm.value.supplier,
       stockInForm.value.costPrice,
       stockInForm.value.note
     )
-    isStockInModalOpen.value = false
+    if (result.success) {
+      isStockInModalOpen.value = false
+    } else {
+      addToast(result.error || 'เกิดข้อผิดพลาดในการบันทึกรับสินค้า', 'error')
+    }
   } catch (err) {
     console.error(err)
     addToast('เกิดข้อผิดพลาดในการบันทึกรับสินค้า', 'error')

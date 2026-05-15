@@ -19,6 +19,7 @@ const searchQuery = ref('')
 const isModalOpen = ref(false)
 const isAdjustModalOpen = ref(false)
 const isHistoryModalOpen = ref(false)
+const historyTab = ref<'points' | 'orders'>('points')
 const isEditing = ref(false)
 const isSaving = ref(false)
 const editingId = ref<number | null>(null)
@@ -45,8 +46,19 @@ const filteredCustomers = computed(() => {
   ).sort((a, b) => b.points - a.points)
 })
 
+const getCustomerOrders = (customerId: any) => {
+  if (!customerId) return []
+  return orders.value
+    .filter(o => o.customerId === customerId || o.customerId === Number(customerId) || o.customerId === String(customerId))
+    .sort((a, b) => {
+      const dateA = new Date(a.timestamp || a.createdAt).getTime()
+      const dateB = new Date(b.timestamp || b.createdAt).getTime()
+      return dateB - dateA
+    })
+}
+
 const getCustomerOrdersCount = (customerId: number) => {
-  return orders.value.filter(o => o.customerId === customerId && o.status !== 'voided').length
+  return getCustomerOrders(customerId).filter(o => o.status !== 'voided').length
 }
 
 // --- Actions ---
@@ -72,6 +84,7 @@ const openAdjustModal = (customer: any) => {
 
 const openHistoryModal = (customer: any) => {
   selectedCustomerForHistory.value = customer
+  historyTab.value = 'points'
   isHistoryModalOpen.value = true
 }
 
@@ -327,15 +340,31 @@ const formatDateTime = (dateStr: string) => {
       <div class="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[80vh] animate-in fade-in zoom-in-95 duration-200">
         <div class="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
           <div>
-            <h3 class="text-xl font-black text-slate-900">ประวัติแต้มสะสม</h3>
+            <h3 class="text-xl font-black text-slate-900">ประวัติสมาชิก</h3>
             <p class="text-xs text-indigo-600 font-bold uppercase tracking-widest mt-1">{{ selectedCustomerForHistory?.name }}</p>
           </div>
           <button @click="isHistoryModalOpen = false" class="text-slate-400 hover:text-slate-600">
              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
           </button>
         </div>
+
+        <!-- Tabs -->
+        <div class="flex border-b border-slate-100 bg-slate-50/30">
+           <button @click="historyTab = 'points'" 
+             class="flex-1 py-4 text-xs font-black uppercase tracking-widest transition-all border-b-2"
+             :class="historyTab === 'points' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-400 hover:text-slate-600'">
+             ประวัติแต้มสะสม
+           </button>
+           <button @click="historyTab = 'orders'" 
+             class="flex-1 py-4 text-xs font-black uppercase tracking-widest transition-all border-b-2"
+             :class="historyTab === 'orders' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-400 hover:text-slate-600'">
+             ประวัติการซื้อ
+           </button>
+        </div>
+
         <div class="flex-1 overflow-y-auto p-8 custom-scrollbar">
-           <div class="space-y-4">
+           <!-- Points History Tab -->
+           <div v-if="historyTab === 'points'" class="space-y-4">
               <div v-for="log in (selectedCustomerForHistory?.pointHistory || []).slice().reverse()" :key="log.id" 
                 class="p-5 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between">
                  <div class="flex items-center gap-4">
@@ -344,7 +373,7 @@ const formatDateTime = (dateStr: string) => {
                     </div>
                     <div>
                        <p class="font-bold text-slate-900 text-sm">{{ log.note }}</p>
-                       <p class="text-[10px] text-slate-400 font-medium">{{ formatDateTime(log.date) }}</p>
+                       <p class="text-[10px] text-slate-400 font-medium">{{ formatDateTime(log.date || log.createdAt) }}</p>
                     </div>
                  </div>
                  <div class="text-right">
@@ -355,6 +384,36 @@ const formatDateTime = (dateStr: string) => {
               <div v-if="!selectedCustomerForHistory?.pointHistory || selectedCustomerForHistory.pointHistory.length === 0" class="text-center py-12 opacity-30">
                  <p class="text-4xl mb-2">📜</p>
                  <p class="font-bold">ยังไม่มีประวัติการสะสมแต้ม</p>
+              </div>
+           </div>
+
+           <!-- Orders History Tab -->
+           <div v-if="historyTab === 'orders'" class="space-y-4">
+              <div v-for="order in getCustomerOrders(selectedCustomerForHistory?.id)" :key="order.id" 
+                class="p-5 bg-slate-50 rounded-2xl border border-slate-100 space-y-3">
+                 <div class="flex justify-between items-start">
+                    <div>
+                       <p class="font-black text-slate-900 text-sm">#{{ order.orderNumber || order.id }}</p>
+                       <p class="text-[10px] text-slate-400 font-medium">{{ formatDateTime(order.timestamp || order.createdAt) }}</p>
+                    </div>
+                    <span class="px-3 py-1 rounded-full text-[9px] font-black uppercase"
+                       :class="order.status === 'completed' ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'">
+                       {{ order.status === 'completed' ? 'สำเร็จ' : 'ยกเลิก' }}
+                    </span>
+                 </div>
+                 <div class="flex justify-between items-end pt-2 border-t border-slate-100/50">
+                    <div class="text-xs font-bold text-slate-500">
+                       {{ order.items?.length || 0 }} รายการ
+                    </div>
+                    <div class="text-right">
+                       <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest">ยอดรวม</p>
+                       <p class="font-black text-indigo-600 text-lg">฿{{ (order.total || 0).toLocaleString() }}</p>
+                    </div>
+                 </div>
+              </div>
+              <div v-if="getCustomerOrders(selectedCustomerForHistory?.id).length === 0" class="text-center py-12 opacity-30">
+                 <p class="text-4xl mb-2">🛍️</p>
+                 <p class="font-bold">ยังไม่มีประวัติการซื้อ</p>
               </div>
            </div>
         </div>

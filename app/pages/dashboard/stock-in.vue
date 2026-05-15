@@ -51,23 +51,23 @@ const handleStockIn = async () => {
 
   isSubmitting.value = true
 
-  // Simulate network delay
-  await new Promise(resolve => setTimeout(resolve, 500))
-
-  stockIn(selectedProductId.value, quantity.value, supplier.value, costPrice.value, note.value)
+  const result = await stockIn(selectedProductId.value, quantity.value, supplier.value, costPrice.value, note.value)
 
   isSubmitting.value = false
-  showSuccess.value = true
-
-  // Reset form
-  selectedProductId.value = null
-  supplier.value = ''
-  quantity.value = 1
-  costPrice.value = 0
-  note.value = ''
-
-  window.scrollTo({ top: 0, behavior: 'smooth' })
-  setTimeout(() => showSuccess.value = false, 3000)
+  
+  if (result.success) {
+    showSuccess.value = true
+    // Reset form
+    selectedProductId.value = null
+    supplier.value = ''
+    quantity.value = 1
+    costPrice.value = 0
+    note.value = ''
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+    setTimeout(() => showSuccess.value = false, 3000)
+  } else {
+    addToast(result.error || 'เกิดข้อผิดพลาดในการบันทึกรับสินค้า', 'error')
+  }
 }
 
 const formatCurrency = (val: number) => {

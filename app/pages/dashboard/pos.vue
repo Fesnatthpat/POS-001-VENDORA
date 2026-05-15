@@ -275,7 +275,7 @@ const completeCheckout = async () => {
     const order = await addOrder(orderData)
 
     // Update product stock in local state by fetching latest from API
-    await fetchProducts()
+    await fetchProducts(true)
 
     lastOrder.value = order
     isCheckoutModalOpen.value = false
