@@ -22,10 +22,12 @@ export const useCustomers = () => {
   const config = useRuntimeConfig()
   const apiUrl = config.public.vendoraUrlApi
   const token = useCookie('auth_token')
-  const customers = ref<Customer[]>([])
+  const customers = useState<Customer[]>('customers_list', () => [])
+  const isLoaded = useState<boolean>('customers_loaded', () => false)
 
-  const fetchCustomers = async () => {
+  const fetchCustomers = async (force = false) => {
     if (!token.value) return
+    if (isLoaded.value && !force) return
     try {
       const response = await $fetch<Customer[]>(`${apiUrl}/customers`, {
         headers: {
@@ -37,6 +39,7 @@ export const useCustomers = () => {
         ...c,
         id: c.id || c._id || ''
       }))
+      isLoaded.value = true
     } catch (error) {
       console.error('Error fetching customers:', error)
     }
@@ -51,7 +54,7 @@ export const useCustomers = () => {
         },
         body: customer
       })
-      await fetchCustomers()
+      await fetchCustomers(true)
       return { success: true }
     } catch (error: any) {
       console.error('Error adding customer:', error)
@@ -68,7 +71,7 @@ export const useCustomers = () => {
         },
         body: customer
       })
-      await fetchCustomers()
+      await fetchCustomers(true)
       return { success: true }
     } catch (error: any) {
       console.error('Error updating customer:', error)
@@ -84,7 +87,7 @@ export const useCustomers = () => {
           Authorization: `Bearer ${token.value}`
         }
       })
-      await fetchCustomers()
+      await fetchCustomers(true)
       return { success: true }
     } catch (error: any) {
       console.error('Error deleting customer:', error)
@@ -103,7 +106,7 @@ export const useCustomers = () => {
         body: { points, note }
       })
       console.log('Redeem API Response:', res)
-      await fetchCustomers()
+      await fetchCustomers(true)
       return { success: true }
     } catch (error: any) {
       console.error('Error redeeming reward:', error)
@@ -122,7 +125,7 @@ export const useCustomers = () => {
         body: { amount, note }
       })
       console.log('Adjust Points API Response:', res)
-      await fetchCustomers()
+      await fetchCustomers(true)
       return { success: true }
     } catch (error: any) {
       console.error('Error adjusting points:', error)

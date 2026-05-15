@@ -15,11 +15,12 @@ export const useFeatures = () => {
     enableReports: true,
     enableSettings: true,
     enableInventoryAlerts: true,
-    debugMode: true
+    debugMode: false
   }
 
   // Use useState to share state across components and ensure reactivity
   const features = useState('app_features', () => ({ ...defaultFeatures }))
+  const isLoaded = useState<boolean>('features_loaded', () => false)
 
   // Helper to load from localStorage
   const loadFeatures = () => {
@@ -37,8 +38,9 @@ export const useFeatures = () => {
   }
 
   // Helper to fetch from Backend
-  const fetchFeatures = async () => {
+  const fetchFeatures = async (force = false) => {
     if (!token.value) return
+    if (isLoaded.value && !force) return
 
     try {
       const response = await $fetch<any>(`${apiUrl}/stores/me`, {
@@ -61,6 +63,7 @@ export const useFeatures = () => {
         // Update features with backend data, falling back to defaults
         features.value = { ...defaultFeatures, ...backendFeatures }
         saveFeatures() // Sync to localStorage
+        isLoaded.value = true
       }
     } catch (err) {
       console.error('Error fetching features:', err)

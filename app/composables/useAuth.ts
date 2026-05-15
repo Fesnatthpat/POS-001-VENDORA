@@ -66,6 +66,9 @@ export const useAuth = () => {
       return { success: false, error: response.message || 'ข้อมูลไม่ถูกต้อง' }
     } catch (err: any) {
       console.error('Login error:', err)
+      if (err.status === 429 || err.response?.status === 429) {
+        return { success: false, error: 'คุณใช้งานบ่อยเกินไป กรุณารออีกสักครู่' }
+      }
       return { 
         success: false, 
         error: err.data?.message || 'ไม่สามารถเข้าสู่ระบบได้ กรุณาลองใหม่อีกครั้ง' 
@@ -95,6 +98,9 @@ export const useAuth = () => {
       return { success: true }
     } catch (err: any) {
       console.error('Registration error:', err)
+      if (err.status === 429 || err.response?.status === 429) {
+        return { success: false, error: 'คุณใช้งานบ่อยเกินไป กรุณารออีกสักครู่' }
+      }
       return { 
         success: false, 
         error: err.data?.message || 'ไม่สามารถสร้างบัญชีได้ กรุณาลองใหม่อีกครั้ง' 

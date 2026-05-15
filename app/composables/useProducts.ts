@@ -18,14 +18,15 @@ export const useProducts = () => {
   const apiUrl = config.public.vendoraUrlApi
   const token = useCookie('auth_token')
 
-  const products = ref<Product[]>([])
+  const products = useState<Product[]>('products_list', () => [])
+  const categories = useState<string[]>('product_categories', () => ['ทั้งหมด', 'เครื่องดื่ม', 'ขนม', 'อาหาร'])
+  const stockMovements = useState<any[]>('stock_movements', () => [])
+  const isLoading = useState<boolean>('products_loading', () => false)
+  const isLoaded = useState<boolean>('products_loaded', () => false)
 
-  const categories = ref(['ทั้งหมด', 'เครื่องดื่ม', 'ขนม', 'อาหาร'])
-  const stockMovements = ref<any[]>([])
-  const isLoading = ref(false)
-
-  const fetchProducts = async () => {
+  const fetchProducts = async (force = false) => {
     if (!token.value) return
+    if (isLoaded.value && !force) return
 
     isLoading.value = true
     try {
@@ -48,6 +49,7 @@ export const useProducts = () => {
           categories.value = ['ทั้งหมด', ...apiCategories]
         }
       }
+      isLoaded.value = true
     } catch (error) {
       console.error('Error fetching products:', error)
     } finally {
@@ -78,7 +80,7 @@ export const useProducts = () => {
       console.log('Product added response:', response)
       
       // Refresh the list after adding
-      await fetchProducts()
+      await fetchProducts(true)
       return { success: true, data: response }
     } catch (error: any) {
       console.error('Error adding product:', error)
@@ -107,7 +109,7 @@ export const useProducts = () => {
         },
         body: formData
       })
-      await fetchProducts()
+      await fetchProducts(true)
       return { success: true }
     } catch (error: any) {
       console.error('Error updating product:', error)
@@ -123,7 +125,7 @@ export const useProducts = () => {
           Authorization: `Bearer ${token.value}`
         }
       })
-      await fetchProducts()
+      await fetchProducts(true)
       return { success: true }
     } catch (error: any) {
       console.error('Error deleting product:', error)
@@ -140,7 +142,7 @@ export const useProducts = () => {
         },
         body: { quantity, supplier, cost, note }
       })
-      await fetchProducts()
+      await fetchProducts(true)
       // Note: Backend does not support fetching stock movements yet
       return { success: true }
     } catch (error: any) {
@@ -158,7 +160,7 @@ export const useProducts = () => {
         },
         body: { quantity, note }
       })
-      await fetchProducts()
+      await fetchProducts(true)
       // Note: Backend does not support fetching stock movements yet
       return { success: true }
     } catch (error: any) {

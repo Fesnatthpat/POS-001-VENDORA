@@ -15,11 +15,14 @@ export const useStaff = () => {
   const apiUrl = config.public.vendoraUrlApi
   const token = useCookie('auth_token')
 
-  const staffMembers = ref<Staff[]>([])
-  const isLoading = ref(false)
+  const staffMembers = useState<Staff[]>('staff_members', () => [])
+  const isLoading = useState<boolean>('staff_loading', () => false)
+  const isLoaded = useState<boolean>('staff_loaded', () => false)
 
-  const fetchStaff = async () => {
+  const fetchStaff = async (force = false) => {
     if (!token.value) return
+    if (isLoaded.value && !force) return
+    
     isLoading.value = true
     try {
       const response = await $fetch<any>(`${apiUrl}/users`, {
@@ -32,6 +35,7 @@ export const useStaff = () => {
         ...s,
         id: s.id || s._id || ''
       })) : []
+      isLoaded.value = true
     } catch (error) {
       console.error('Error fetching staff:', error)
     } finally {
@@ -51,7 +55,7 @@ export const useStaff = () => {
         body: newStaff
       })
       console.log('DEBUG: Add staff response:', response)
-      await fetchStaff()
+      await fetchStaff(true)
       return { success: true }
     } catch (error: any) {
       console.error('DEBUG: Error adding staff:', error)
@@ -85,7 +89,7 @@ export const useStaff = () => {
         },
         body: updatedStaff
       })
-      await fetchStaff()
+      await fetchStaff(true)
       return { success: true }
     } catch (error: any) {
       console.error('Error updating staff:', error)
@@ -101,7 +105,7 @@ export const useStaff = () => {
           Authorization: `Bearer ${token.value}`
         }
       })
-      await fetchStaff()
+      await fetchStaff(true)
       return { success: true }
     } catch (error: any) {
       console.error('Error deleting staff:', error)
